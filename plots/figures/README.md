@@ -2,7 +2,7 @@
 
 This folder contains polished PDF figures for presenting Study 5: cross-validation with the California Housing dataset and a decision tree regressor.
 
-All PDFs are exported with transparent backgrounds for use on presentation slides. The source notebook used to generate and tweak these figures is `tmp/study5_polished_figures.ipynb`.
+All PDFs are exported with transparent backgrounds for use on presentation slides. The source notebook used to generate and tweak these figures is `tmp/study5_polished_figures.ipynb`. Cross-validation uses shuffled 20-fold `KFold` with `random_state=0`, so it is comparable to the shuffled `train_test_split` baselines.
 
 ## Figures
 
