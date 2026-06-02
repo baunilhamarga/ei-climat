@@ -29,7 +29,7 @@ Correlation between daily mean temperature and daily consumption:
 
 | Acorn | temperature_consumption_corr |
 | --- | --- |
-| ACORN-E | -0.917 |
+| ACORN-E | -0.916 |
 | ACORN-F | -0.885 |
 | ACORN-Q | -0.868 |
 
@@ -51,21 +51,21 @@ Overall validation RMSE:
 
 | frequency | model | acorn | rmse | n |
 | --- | --- | --- | --- | --- |
-| daily | gradient_boosting | ALL | 0.36777 | 93 |
-| daily | ridge | ALL | 0.38063 | 93 |
+| daily | ridge | ALL | 0.37726 | 93 |
+| daily | gradient_boosting | ALL | 0.38485 | 93 |
 | daily | previous_day | ALL | 0.48349 | 93 |
 | daily | previous_week | ALL | 0.49415 | 93 |
 | daily | seasonal_mean | ALL | 1.5379 | 93 |
-| half_hourly | gradient_boosting | ALL | 0.00754 | 4032 |
+| half_hourly | gradient_boosting | ALL | 0.0076 | 4032 |
 | half_hourly | ridge | ALL | 0.00993 | 4032 |
 | half_hourly | previous_day | ALL | 0.02117 | 4032 |
 | half_hourly | previous_week | ALL | 0.02422 | 4032 |
 | half_hourly | seasonal_mean | ALL | 0.04072 | 4032 |
 
-Selected final models:
+Selected final trainable models:
 
-- Half-hourly: `gradient_boosting` with RMSE `0.00754`.
-- Daily: `gradient_boosting` with RMSE `0.36777`.
+- Half-hourly: `gradient_boosting` with RMSE `0.00760`.
+- Daily: `ridge` with RMSE `0.37726`.
 
 ## Final Outputs
 
@@ -74,7 +74,7 @@ The filled forecast files are available in:
 - `outputs/group5/predictions/group_5_half_hourly_predict.csv`
 - `outputs/group5/predictions/group_5_daily_predict.csv`
 
-The same filled templates are also written back to `data/02_processed/csv` and, when parquet support is available, to `data/02_processed/parquet`.
+Cleaned weather and joined intermediate frames are written to `data/01_interim/group5`. Model-ready feature files are written to `data/02_processed/group5_modeling`. The original client-provided files under `data/00_raw` and the existing `data/02_processed/csv` and `data/02_processed/parquet` template files are treated as read-only inputs.
 
 ## Limits
 
