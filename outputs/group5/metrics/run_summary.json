@@ -1,0 +1,15 @@
+{
+  "half_hourly_rows": 288,
+  "daily_rows": 96,
+  "parquet_available": true,
+  "best_half_hourly_overall": {
+    "model": "gradient_boosting",
+    "rmse": 0.0075354397346753,
+    "n": 4032
+  },
+  "best_daily_overall": {
+    "model": "gradient_boosting",
+    "rmse": 0.36777329650128554,
+    "n": 93
+  }
+}

@@ -1,0 +1,31 @@
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = ROOT_DIR / "data"
+PROCESSED_CSV_DIR = DATA_DIR / "02_processed" / "csv"
+PROCESSED_PARQUET_DIR = DATA_DIR / "02_processed" / "parquet"
+RAW_DIR = DATA_DIR / "00_raw"
+
+OUTPUT_DIR = ROOT_DIR / "outputs" / "group5"
+PREDICTION_DIR = OUTPUT_DIR / "predictions"
+METRICS_DIR = OUTPUT_DIR / "metrics"
+FIGURES_DIR = OUTPUT_DIR / "figures"
+REPORT_DIR = ROOT_DIR / "reports"
+
+ACORNS = ("ACORN-E", "ACORN-F", "ACORN-Q")
+ACORN_GROUPS = {
+    "ACORN-E": "Affluent",
+    "ACORN-F": "Comfortable",
+    "ACORN-Q": "Adversity",
+}
+
+HALF_HOURLY_FORECAST_START = "2014-01-13 00:00:00"
+HALF_HOURLY_FORECAST_END = "2014-01-14 23:30:00"
+DAILY_FORECAST_START = "2014-01-13"
+DAILY_FORECAST_END = "2014-02-13"
+
+HALF_HOURLY_VALIDATION_START = "2013-12-16 00:00:00"
+DAILY_VALIDATION_START = "2013-12-13"
+
+RANDOM_STATE = 42
+
