@@ -2,6 +2,8 @@
 
 This folder contains polished PDF figures for presenting Study 5: cross-validation with the California Housing dataset and a decision tree regressor.
 
+All PDFs are exported with transparent backgrounds for use on presentation slides. The source notebook used to generate and tweak these figures is `tmp/study5_polished_figures.ipynb`. Cross-validation uses shuffled 20-fold `KFold` with `random_state=0`, so it is comparable to the shuffled `train_test_split` baselines.
+
 ## Figures
 
 ### `01_cross_validation_concept.pdf`
@@ -17,7 +19,7 @@ Side-by-side distributions of the prediction target, median house value, and the
 Correlation matrix for all numerical features. This highlights that `MedInc` has the strongest linear relationship with house price while geographic variables also carry important information.
 
 ### `05_decision_tree_overfitting_train_vs_test.pdf`
-Train versus test MAE for two train/test splits. This figure demonstrates that an unconstrained decision tree nearly memorizes the training data but has much larger test error.
+Train versus test MAE for two train/test splits. The figure uses separate y-axis ranges so the near-zero train MAE values remain visible, and each bar is labeled with its exact MAE.
 
 ### `06_single_split_mae_sensitivity.pdf`
 Decision tree test MAE across 30 different `random_state` values. This shows why relying on only one train/test split can give a fragile estimate of model performance.
