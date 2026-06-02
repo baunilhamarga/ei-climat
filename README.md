@@ -24,6 +24,8 @@ Generate the forecasts, metrics, figures, and report:
 EI-climat/bin/python scripts/group5_run_pipeline.py
 ```
 
+This also saves trained model pipelines under `models/short_term` and `models/medium_term`.
+
 Validate the generated prediction files:
 
 ```bash
@@ -40,6 +42,12 @@ Then open the local URL printed by Streamlit, usually `http://localhost:8501`.
 
 ## Main Outputs
 
+- `notebooks/01_data_exploration.ipynb`
+- `notebooks/02_data_preparation_features.ipynb`
+- `notebooks/03_short_term_modeling.ipynb`
+- `notebooks/04_medium_term_modeling.ipynb`
+- `models/short_term/group5_half_hourly_gradient_boosting.joblib`
+- `models/medium_term/group5_daily_gradient_boosting.joblib`
 - `outputs/group5/predictions/group_5_half_hourly_predict.csv`
 - `outputs/group5/predictions/group_5_daily_predict.csv`
 - `outputs/group5/metrics/validation_metrics.csv`

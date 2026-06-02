@@ -2,6 +2,8 @@
   "half_hourly_rows": 288,
   "daily_rows": 96,
   "parquet_available": true,
+  "short_term_model_path": "/home/baunilha/Repositories/ei-climat/models/short_term/group5_half_hourly_gradient_boosting.joblib",
+  "medium_term_model_path": "/home/baunilha/Repositories/ei-climat/models/medium_term/group5_daily_gradient_boosting.joblib",
   "best_half_hourly_overall": {
     "model": "gradient_boosting",
     "rmse": 0.0075354397346753,

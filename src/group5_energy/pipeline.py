@@ -14,6 +14,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+import joblib
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -36,12 +37,14 @@ from .config import (
     HALF_HOURLY_FORECAST_START,
     HALF_HOURLY_VALIDATION_START,
     METRICS_DIR,
+    MEDIUM_TERM_MODEL_DIR,
     PREDICTION_DIR,
     PROCESSED_CSV_DIR,
     PROCESSED_PARQUET_DIR,
     RANDOM_STATE,
     RAW_DIR,
     REPORT_DIR,
+    SHORT_TERM_MODEL_DIR,
 )
 
 
@@ -160,6 +163,7 @@ def run_pipeline() -> PipelineResult:
 
     half_model.fit(feature_matrix(half_features, "half_hourly"), half_features[HALF_TARGET])
     daily_model.fit(feature_matrix(daily_features, "daily"), daily_features[DAILY_TARGET])
+    save_models(half_model, daily_model)
 
     half_future = prepare_half_hourly_frame(
         half_template, weather_hourly, temperatures, holidays, half_clients
@@ -208,8 +212,20 @@ def run_pipeline() -> PipelineResult:
 
 
 def ensure_output_dirs() -> None:
-    for directory in (PREDICTION_DIR, METRICS_DIR, FIGURES_DIR, REPORT_DIR):
+    for directory in (
+        PREDICTION_DIR,
+        METRICS_DIR,
+        FIGURES_DIR,
+        REPORT_DIR,
+        SHORT_TERM_MODEL_DIR,
+        MEDIUM_TERM_MODEL_DIR,
+    ):
         directory.mkdir(parents=True, exist_ok=True)
+
+
+def save_models(half_model: Pipeline, daily_model: Pipeline) -> None:
+    joblib.dump(half_model, SHORT_TERM_MODEL_DIR / "group5_half_hourly_gradient_boosting.joblib")
+    joblib.dump(daily_model, MEDIUM_TERM_MODEL_DIR / "group5_daily_gradient_boosting.joblib")
 
 
 def parquet_available() -> bool:
@@ -695,6 +711,8 @@ def write_core_outputs(
         "half_hourly_rows": int(len(half_predictions)),
         "daily_rows": int(len(daily_predictions)),
         "parquet_available": parquet_available(),
+        "short_term_model_path": str(SHORT_TERM_MODEL_DIR / "group5_half_hourly_gradient_boosting.joblib"),
+        "medium_term_model_path": str(MEDIUM_TERM_MODEL_DIR / "group5_daily_gradient_boosting.joblib"),
         "best_half_hourly_overall": best_model(metrics, "half_hourly"),
         "best_daily_overall": best_model(metrics, "daily"),
     }
