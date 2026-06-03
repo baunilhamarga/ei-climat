@@ -93,6 +93,8 @@ Saved selected model paths:
 - `models/short_term/group5_half_hourly_selected.joblib`
 - `models/medium_term/group5_daily_selected.joblib`
 
+After rerunning the pipeline, every trainable final model is also saved by name in `models/short_term/` and `models/medium_term/`, for example `group5_half_hourly_xgboost.joblib`, `group5_half_hourly_catboost.joblib`, and `group5_half_hourly_lightgbm.joblib`. AutoGluon models are saved as directories instead of `.joblib` files.
+
 If either AutoGluon model becomes selected after rerunning, the selected model path will be a directory instead of a `.joblib` file.
 
 ## Important Files
@@ -144,7 +146,7 @@ Current production choices:
 
 The pipeline now includes `catboost`, `lightgbm`, `autogluon`, and `autogluon_timeseries` as trainable models beside `ridge` and `xgboost`.
 
-- Dependency: `catboost==1.2.8`
+- Dependency: `catboost==1.2.10`
 - Dependency: `lightgbm==4.6.0`
 - Dependency: `autogluon.tabular[catboost,lightgbm,xgboost]==1.5.0`
 - Dependency: `autogluon.timeseries==1.5.0`

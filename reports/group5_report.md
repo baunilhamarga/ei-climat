@@ -46,16 +46,24 @@ The compared models are:
 - `seasonal_mean`: historical mean by ACORN and calendar slot.
 - `ridge`: regularized linear regression.
 - `xgboost`: gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
+- `catboost`: CatBoost gradient boosting regression on the same engineered feature table.
+- `lightgbm`: LightGBM gradient boosting regression on the same engineered feature table.
+- `autogluon`: AutoGluon TabularPredictor AutoML regression on the same engineered feature table.
+- `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using the target history plus known future calendar, holiday, and weather covariates.
 
 Overall validation RMSE:
 
 | frequency | model | acorn | rmse | n |
 | --- | --- | --- | --- | --- |
 | daily | xgboost | ALL | 0.35315 | 93 |
+| daily | catboost | ALL | 0.35323 | 93 |
+| daily | lightgbm | ALL | 0.36965 | 93 |
 | daily | ridge | ALL | 0.37726 | 93 |
 | daily | previous_day | ALL | 0.48349 | 93 |
 | daily | previous_week | ALL | 0.49415 | 93 |
 | daily | seasonal_mean | ALL | 1.5379 | 93 |
+| half_hourly | lightgbm | ALL | 0.00737 | 4032 |
+| half_hourly | catboost | ALL | 0.00803 | 4032 |
 | half_hourly | xgboost | ALL | 0.00826 | 4032 |
 | half_hourly | ridge | ALL | 0.00993 | 4032 |
 | half_hourly | previous_day | ALL | 0.02117 | 4032 |
@@ -64,7 +72,7 @@ Overall validation RMSE:
 
 Selected final trainable models:
 
-- Half-hourly: `xgboost` with RMSE `0.00826`.
+- Half-hourly: `lightgbm` with RMSE `0.00737`.
 - Daily: `xgboost` with RMSE `0.35315`.
 
 ## Final Outputs
@@ -75,6 +83,8 @@ The filled forecast files are available in:
 - `outputs/group5/predictions/group_5_daily_predict.csv`
 
 Cleaned weather and joined intermediate frames are written to `data/01_interim/group5`. Model-ready feature files are written to `data/02_processed/group5_modeling`. The original client-provided files under `data/00_raw` and the existing `data/02_processed/csv` and `data/02_processed/parquet` template files are treated as read-only inputs.
+
+Final fitted trainable models are saved by name under `models/short_term` and `models/medium_term`. The selected forecast model is also saved with the `selected` suffix for compatibility with downstream tools.
 
 ## Limits
 

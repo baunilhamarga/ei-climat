@@ -243,23 +243,23 @@ def run_pipeline() -> PipelineResult:
         validation_start=pd.Timestamp(DAILY_VALIDATION_START),
     )
 
-    half_model = fit_final_model(
-        half_model_name,
+    half_models = fit_final_models(
         "half_hourly",
         half_features,
         half_future,
         HALF_TARGET,
         "DateTime",
     )
-    daily_model = fit_final_model(
-        daily_model_name,
+    daily_models = fit_final_models(
         "daily",
         daily_features,
         daily_future,
         DAILY_TARGET,
         "Date",
     )
-    save_models(half_model, daily_model, half_model_name, daily_model_name)
+    save_models(half_models, daily_models, half_model_name, daily_model_name)
+    half_model = half_models[half_model_name]
+    daily_model = daily_models[daily_model_name]
 
     half_predictions = forecast_with_model(
         half_model,
@@ -349,25 +349,60 @@ def autogluon_validation_path(frequency: str, model_name: str) -> Path:
     return model_dir(frequency) / f"{model_stem(frequency)}_{model_name}_validation"
 
 
+def active_trainable_model_names() -> tuple[str, ...]:
+    raw_names = os.environ.get("GROUP5_TRAINABLE_MODELS", "").strip()
+    if not raw_names:
+        return TRAINABLE_MODEL_NAMES
+    names = tuple(name.strip() for name in raw_names.split(",") if name.strip())
+    unknown = sorted(set(names) - set(TRAINABLE_MODEL_NAMES))
+    if unknown:
+        raise ValueError(f"Unsupported trainable model names in GROUP5_TRAINABLE_MODELS: {unknown}.")
+    if not names:
+        raise ValueError("GROUP5_TRAINABLE_MODELS did not contain any model names.")
+    return names
+
+
+def final_model_paths(frequency: str) -> dict[str, str]:
+    return {
+        model_name: str(model_storage_path(frequency, model_name, selected=False))
+        for model_name in active_trainable_model_names()
+    }
+
+
 def save_models(
-    half_model: Any,
-    daily_model: Any,
+    half_models: dict[str, Any],
+    daily_models: dict[str, Any],
     half_model_name: str,
     daily_model_name: str,
 ) -> None:
-    save_final_model(half_model, "half_hourly", half_model_name)
-    save_final_model(daily_model, "daily", daily_model_name)
+    save_final_models(half_models, "half_hourly", half_model_name)
+    save_final_models(daily_models, "daily", daily_model_name)
 
 
-def save_final_model(model: Any, frequency: str, model_name: str) -> None:
-    reset_stale_selected_model(frequency, model_name)
-    selected_path = model_storage_path(frequency, model_name, selected=True)
+def save_final_models(models: dict[str, Any], frequency: str, selected_model_name: str) -> None:
+    if selected_model_name not in models:
+        raise ValueError(f"Selected model {selected_model_name} was not fitted for {frequency}.")
+    reset_stale_selected_model(frequency, selected_model_name)
+    for model_name, model in models.items():
+        save_named_final_model(model, frequency, model_name)
+    save_selected_model(models[selected_model_name], frequency, selected_model_name)
+
+
+def save_named_final_model(model: Any, frequency: str, model_name: str) -> None:
     named_path = model_storage_path(frequency, model_name, selected=False)
     if model_name in AUTOGLUON_MODEL_NAMES:
-        model.copy_to(named_path)
+        if model.path.resolve() != named_path.resolve():
+            model.copy_to(named_path)
+        return
+    joblib.dump(model, named_path)
+
+
+def save_selected_model(model: Any, frequency: str, model_name: str) -> None:
+    selected_path = model_storage_path(frequency, model_name, selected=True)
+    if model_name in AUTOGLUON_MODEL_NAMES:
+        model.copy_to(selected_path)
         return
     joblib.dump(model, selected_path)
-    joblib.dump(model, named_path)
 
 
 def reset_path(path: Path) -> None:
@@ -1113,7 +1148,7 @@ def fit_and_evaluate(
 
     train_x = feature_matrix(train, frequency)
     valid_x = feature_matrix(valid, frequency)
-    for model_name in TRAINABLE_MODEL_NAMES:
+    for model_name in active_trainable_model_names():
         if model_name == AUTOGLUON_TIMESERIES_MODEL:
             model = make_model(
                 model_name,
@@ -1175,7 +1210,7 @@ def add_baseline_predictions(
 
 
 def validation_metrics(valid_predictions: pd.DataFrame) -> pd.DataFrame:
-    prediction_cols = [*BASELINE_MODEL_NAMES, *TRAINABLE_MODEL_NAMES]
+    prediction_cols = [*BASELINE_MODEL_NAMES, *active_trainable_model_names()]
     rows = []
     for model in prediction_cols:
         rows.append(metric_record(valid_predictions, model, "ALL"))
@@ -1188,7 +1223,7 @@ def selected_trainable_model(metrics: pd.DataFrame, frequency: str) -> dict[str,
     subset = metrics[
         (metrics["frequency"] == frequency)
         & (metrics["acorn"] == "ALL")
-        & (metrics["model"].isin(TRAINABLE_MODEL_NAMES))
+        & (metrics["model"].isin(active_trainable_model_names()))
     ].dropna(subset=["rmse"])
     if subset.empty:
         raise ValueError(f"No trainable model metrics found for {frequency}.")
@@ -1213,6 +1248,27 @@ def clip_predictions(values: Iterable[float]) -> np.ndarray:
     return np.maximum(np.asarray(values, dtype=float), 0.0)
 
 
+def fit_final_models(
+    frequency: str,
+    history: pd.DataFrame,
+    future: pd.DataFrame,
+    target_col: str,
+    time_col: str,
+) -> dict[str, Any]:
+    return {
+        model_name: fit_final_model(
+            model_name,
+            frequency,
+            history,
+            future,
+            target_col,
+            time_col,
+            model_storage_path(frequency, model_name, selected=False),
+        )
+        for model_name in active_trainable_model_names()
+    }
+
+
 def fit_final_model(
     model_name: str,
     frequency: str,
@@ -1220,18 +1276,19 @@ def fit_final_model(
     future: pd.DataFrame,
     target_col: str,
     time_col: str,
+    model_path: Path | None = None,
 ) -> Any:
-    model_path = model_storage_path(frequency, model_name, selected=True)
+    storage_path = model_path or model_storage_path(frequency, model_name, selected=False)
     if model_name == AUTOGLUON_TIMESERIES_MODEL:
         model = make_model(
             model_name,
             frequency,
-            model_path,
+            storage_path,
             prediction_length=forecast_horizon_length(future, time_col),
         )
         model.fit_history(history, target_col, time_col)
         return model
-    model = make_model(model_name, frequency, model_path)
+    model = make_model(model_name, frequency, storage_path)
     model.fit(feature_matrix(history, frequency), history[target_col])
     return model
 
@@ -1352,12 +1409,15 @@ def write_core_outputs(
         "parquet_available": parquet_available(),
         "selected_half_hourly_model": half_model_name,
         "selected_daily_model": daily_model_name,
+        "active_trainable_models": list(active_trainable_model_names()),
         "interim_csv_dir": str(INTERIM_CSV_DIR),
         "interim_parquet_dir": str(INTERIM_PARQUET_DIR),
         "model_ready_csv_dir": str(MODEL_READY_CSV_DIR),
         "model_ready_parquet_dir": str(MODEL_READY_PARQUET_DIR),
         "short_term_model_path": str(model_storage_path("half_hourly", half_model_name, selected=True)),
         "medium_term_model_path": str(model_storage_path("daily", daily_model_name, selected=True)),
+        "short_term_model_paths": final_model_paths("half_hourly"),
+        "medium_term_model_paths": final_model_paths("daily"),
         "best_half_hourly_overall": best_model(metrics, "half_hourly"),
         "best_daily_overall": best_model(metrics, "daily"),
     }
@@ -1610,6 +1670,8 @@ The filled forecast files are available in:
 
 Cleaned weather and joined intermediate frames are written to `data/01_interim/group5`. Model-ready feature files are written to `data/02_processed/group5_modeling`. The original client-provided files under `data/00_raw` and the existing `data/02_processed/csv` and `data/02_processed/parquet` template files are treated as read-only inputs.
 
+Final fitted trainable models are saved by name under `models/short_term` and `models/medium_term`. The selected forecast model is also saved with the `selected` suffix for compatibility with downstream tools.
+
 ## Limits
 
 The forecasts use real weather data for the forecast period, as allowed by the assignment. Future lag features are generated recursively, so later daily predictions depend partly on earlier model predictions. The models are practical and reproducible, but they are not calibrated probabilistic forecasts and do not estimate uncertainty intervals.
@@ -1661,6 +1723,6 @@ def validate_outputs(half_predictions: pd.DataFrame, daily_predictions: pd.DataF
     expected_frequencies = {"half_hourly", "daily"}
     if set(metrics["frequency"].unique()) != expected_frequencies:
         raise ValueError("Validation metrics are missing a frequency.")
-    for model_name in TRAINABLE_MODEL_NAMES:
+    for model_name in active_trainable_model_names():
         if metrics[(metrics["acorn"] == "ALL") & (metrics["model"] == model_name)].empty:
             raise ValueError(f"Validation metrics are missing the {model_name} model.")

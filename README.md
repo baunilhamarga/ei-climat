@@ -37,7 +37,7 @@ Generate the forecasts, metrics, figures, and report:
 EI-climat/bin/python scripts/group5_run_pipeline.py
 ```
 
-This keeps the client-provided data files unchanged. It writes cleaned/intermediate data to `data/01_interim/group5`, model-ready feature files to `data/02_processed/group5_modeling`, and saved model pipelines under `models/short_term` and `models/medium_term`.
+This keeps the client-provided data files unchanged. It writes cleaned/intermediate data to `data/01_interim/group5`, model-ready feature files to `data/02_processed/group5_modeling`, and saved model pipelines under `models/short_term` and `models/medium_term`. The pipeline saves every final trainable model by name, plus a `selected` copy for the model used to produce the final forecasts.
 
 AutoGluon is pinned to the latest stable `1.5.0` release checked for this project. The pipeline includes both `autogluon.tabular` and `autogluon.timeseries`.
 
@@ -51,6 +51,14 @@ export GROUP5_AUTOGLUON_TS_PRESETS=fast_training
 export GROUP5_AUTOGLUON_TS_HALF_HOURLY_TIME_LIMIT=300
 export GROUP5_AUTOGLUON_TS_DAILY_TIME_LIMIT=120
 ```
+
+To run only a subset of trainable models, set:
+
+```bash
+export GROUP5_TRAINABLE_MODELS=ridge,xgboost,catboost,lightgbm
+```
+
+This is useful on Python environments where AutoGluon is not available.
 
 The TimeSeries model is compared on the same chronological validation subset and the same RMSE metric as the other models. It uses the target history plus known future calendar, holiday, and weather covariates instead of the manual lag/rolling feature table.
 
