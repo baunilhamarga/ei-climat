@@ -86,7 +86,7 @@ Current run summary from `outputs/group5/metrics/run_summary.json`:
 - Best daily validation RMSE: `0.353151` over `93` validation rows
 - Parquet output is available
 
-CatBoost, AutoGluon Tabular, and AutoGluon TimeSeries were added after this run, but the pipeline has not been rerun yet. Current saved metrics and predictions therefore do not include these models unless a later session reruns the pipeline.
+CatBoost, LightGBM, AutoGluon Tabular, and AutoGluon TimeSeries were added after this run, but the pipeline has not been rerun yet. Current saved metrics and predictions therefore do not include these models unless a later session reruns the pipeline.
 
 Saved selected model paths:
 
@@ -142,9 +142,10 @@ Current production choices:
 
 ## Additional Trainable Models
 
-The pipeline now includes `catboost`, `autogluon`, and `autogluon_timeseries` as trainable models beside `ridge` and `xgboost`.
+The pipeline now includes `catboost`, `lightgbm`, `autogluon`, and `autogluon_timeseries` as trainable models beside `ridge` and `xgboost`.
 
 - Dependency: `catboost==1.2.8`
+- Dependency: `lightgbm==4.6.0`
 - Dependency: `autogluon.tabular[catboost,lightgbm,xgboost]==1.5.0`
 - Dependency: `autogluon.timeseries==1.5.0`
 - This was the latest stable AutoGluon release checked for the project.

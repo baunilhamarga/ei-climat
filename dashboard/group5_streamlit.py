@@ -171,6 +171,7 @@ def main() -> None:
             for model in [
                 "autogluon_timeseries",
                 "autogluon",
+                "lightgbm",
                 "catboost",
                 "xgboost",
                 "ridge",

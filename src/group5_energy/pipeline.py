@@ -22,6 +22,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from catboost import CatBoostRegressor
+from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
 
 from .config import (
@@ -118,7 +119,15 @@ AUTOGLUON_TABULAR_MODEL = "autogluon"
 AUTOGLUON_TIMESERIES_MODEL = "autogluon_timeseries"
 AUTOGLUON_MODEL_NAMES = (AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
 CATBOOST_MODEL = "catboost"
-TRAINABLE_MODEL_NAMES = ("ridge", "xgboost", CATBOOST_MODEL, AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
+LIGHTGBM_MODEL = "lightgbm"
+TRAINABLE_MODEL_NAMES = (
+    "ridge",
+    "xgboost",
+    CATBOOST_MODEL,
+    LIGHTGBM_MODEL,
+    AUTOGLUON_TABULAR_MODEL,
+    AUTOGLUON_TIMESERIES_MODEL,
+)
 BASELINE_MODEL_NAMES = ("previous_day", "previous_week", "seasonal_mean")
 AUTOGLUON_LABEL = "__target__"
 TIME_SERIES_ID = "item_id"
@@ -811,6 +820,30 @@ def make_catboost_model(frequency: str) -> Pipeline:
     )
 
 
+def make_lightgbm_model(frequency: str) -> Pipeline:
+    return Pipeline(
+        [
+            ("features", make_preprocessor(frequency)),
+            (
+                "model",
+                LGBMRegressor(
+                    objective="regression",
+                    metric="rmse",
+                    n_estimators=500,
+                    learning_rate=0.04,
+                    num_leaves=31,
+                    subsample=0.85,
+                    colsample_bytree=0.85,
+                    reg_lambda=1.0,
+                    random_state=RANDOM_STATE,
+                    n_jobs=1,
+                    verbosity=-1,
+                ),
+            ),
+        ]
+    )
+
+
 def make_linear_model(frequency: str) -> Pipeline:
     return Pipeline(
         [
@@ -1043,6 +1076,8 @@ def make_model(
         return make_tree_model(frequency)
     if model_name == CATBOOST_MODEL:
         return make_catboost_model(frequency)
+    if model_name == LIGHTGBM_MODEL:
+        return make_lightgbm_model(frequency)
     if model_name == "ridge":
         return make_linear_model(frequency)
     if model_name == AUTOGLUON_TABULAR_MODEL:
@@ -1553,6 +1588,7 @@ The compared models are:
 - `ridge`: regularized linear regression.
 - `xgboost`: gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
 - `catboost`: CatBoost gradient boosting regression on the same engineered feature table.
+- `lightgbm`: LightGBM gradient boosting regression on the same engineered feature table.
 - `autogluon`: AutoGluon TabularPredictor AutoML regression on the same engineered feature table.
 - `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using the target history plus known future calendar, holiday, and weather covariates.
 
