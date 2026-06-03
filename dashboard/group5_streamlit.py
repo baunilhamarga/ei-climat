@@ -42,8 +42,6 @@ class ForecastDashboardApp:
         # Inject custom styling & typography (Outfit Google Font, Glassmorphic KPI Cards)
         StyleManager.apply()
         
-        st.title("Group 5 Energy Forecasts")
-
         # Load datasets safely and display instruction if run has not occurred
         try:
             data = self.data_loader.load_artifacts()
@@ -51,16 +49,37 @@ class ForecastDashboardApp:
             st.error("Run `EI-climat/bin/python scripts/group5_run_pipeline.py` before opening the dashboard.")
             st.stop()
 
-        # Sidebar multi-select filter for ACORN segments
         acorn_options = list(ACORN_GROUPS)
-        selected_acorns = st.sidebar.multiselect(
-            "ACORN segments",
-            acorn_options,
-            default=acorn_options,
-            format_func=lambda value: f"{value} - {ACORN_GROUPS[value]}",
-        )
-        if not selected_acorns:
-            selected_acorns = acorn_options
+
+        # Enforce session state for ACORN selection to prevent empty states
+        if "last_valid_acorns" not in st.session_state:
+            st.session_state.last_valid_acorns = acorn_options
+        if "acorn_filter" not in st.session_state:
+            st.session_state.acorn_filter = acorn_options
+
+        def on_acorn_change():
+            if not st.session_state.acorn_filter:
+                st.session_state.acorn_filter = st.session_state.last_valid_acorns
+                st.session_state.show_acorn_warning = True
+            else:
+                st.session_state.last_valid_acorns = st.session_state.acorn_filter
+
+        # Header layout with Title and the Acorn selector in columns
+        col1, col2 = st.columns([5, 2], vertical_alignment="bottom")
+        with col1:
+            st.title("Group 5 Energy Forecasts")
+        with col2:
+            selected_acorns = st.multiselect(
+                "Filter ACORN Segments",
+                acorn_options,
+                key="acorn_filter",
+                on_change=on_acorn_change,
+                format_func=lambda value: f"{value} - {ACORN_GROUPS[value]}",
+            )
+
+        if st.session_state.get("show_acorn_warning", False):
+            st.toast("At least one ACORN segment must be selected!", icon="⚠️")
+            st.session_state.show_acorn_warning = False
 
         # Initialize tabs layout via Streamlit
         tab_names = list(self.tabs.keys())
