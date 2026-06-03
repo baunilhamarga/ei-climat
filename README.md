@@ -1,8 +1,8 @@
-# EI Climat - Group 5 Energy Forecasting
+# EI Climat - Energy Forecasting
 
 Code for the "Enseignement d'intégration : Analyse de la consommation électrique par la Data Science".
 
-Group 5 forecasts UK household electricity consumption for:
+Our group forecasts UK household electricity consumption for:
 
 - `ACORN-E` - Affluent
 - `ACORN-F` - Comfortable
