@@ -9,7 +9,7 @@ Our group forecasts UK household electricity consumption for:
 - `ACORN-Q` - Adversity
 
 The project includes exploratory analysis, validation metrics, filled forecast templates, a short report, and a Streamlit dashboard.
-The modeling pipeline compares baselines, ridge regression, gradient boosting, AutoGluon Tabular AutoML, and AutoGluon TimeSeries.
+The modeling pipeline compares baselines, ridge regression, XGBoost, CatBoost, AutoGluon Tabular AutoML, and AutoGluon TimeSeries.
 
 ## Quick Setup
 
@@ -19,7 +19,7 @@ Use the existing project virtual environment for the full local setup:
 EI-climat/bin/pip install -r requirements.txt
 ```
 
-This installs the complete project environment, including notebooks, sklearn models, and both AutoGluon models.
+This installs the complete project environment, including notebooks, sklearn models, CatBoost, and both AutoGluon models.
 
 For lighter installs, use the split requirement files:
 

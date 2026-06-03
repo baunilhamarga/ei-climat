@@ -80,13 +80,13 @@ Current run summary from `outputs/group5/metrics/run_summary.json`:
 
 - Half-hourly output rows: `288`
 - Daily output rows: `96`
-- Selected half-hourly model: `gradient_boosting`
-- Selected daily model: `ridge`
-- Best half-hourly validation RMSE: `0.007596` over `4032` validation rows
-- Best daily validation RMSE: `0.377257` over `93` validation rows
+- Selected half-hourly model: `xgboost`
+- Selected daily model: `xgboost`
+- Best half-hourly validation RMSE: `0.008256` over `4032` validation rows
+- Best daily validation RMSE: `0.353151` over `93` validation rows
 - Parquet output is available
 
-AutoGluon Tabular and AutoGluon TimeSeries were added after this run, but the pipeline has not been rerun yet. Current saved metrics and predictions therefore do not include either AutoGluon model unless a later session reruns the pipeline.
+CatBoost, AutoGluon Tabular, and AutoGluon TimeSeries were added after this run, but the pipeline has not been rerun yet. Current saved metrics and predictions therefore do not include these models unless a later session reruns the pipeline.
 
 Saved selected model paths:
 
@@ -140,10 +140,11 @@ Current production choices:
 - Keep sklearn imputers in the model pipeline as a fallback.
 - Use chronological validation only. Do not shuffle time series rows.
 
-## AutoGluon Model
+## Additional Trainable Models
 
-The pipeline now includes `autogluon` and `autogluon_timeseries` as trainable models beside `ridge` and `gradient_boosting`.
+The pipeline now includes `catboost`, `autogluon`, and `autogluon_timeseries` as trainable models beside `ridge` and `xgboost`.
 
+- Dependency: `catboost==1.2.8`
 - Dependency: `autogluon.tabular[catboost,lightgbm,xgboost]==1.5.0`
 - Dependency: `autogluon.timeseries==1.5.0`
 - This was the latest stable AutoGluon release checked for the project.

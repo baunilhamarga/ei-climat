@@ -21,6 +21,7 @@ from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from catboost import CatBoostRegressor
 from xgboost import XGBRegressor
 
 from .config import (
@@ -116,7 +117,8 @@ DAILY_CATEGORICAL_FEATURES = ["Acorn", "icon", "precipType"]
 AUTOGLUON_TABULAR_MODEL = "autogluon"
 AUTOGLUON_TIMESERIES_MODEL = "autogluon_timeseries"
 AUTOGLUON_MODEL_NAMES = (AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
-TRAINABLE_MODEL_NAMES = ("ridge", "xgboost", AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
+CATBOOST_MODEL = "catboost"
+TRAINABLE_MODEL_NAMES = ("ridge", "xgboost", CATBOOST_MODEL, AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
 BASELINE_MODEL_NAMES = ("previous_day", "previous_week", "seasonal_mean")
 AUTOGLUON_LABEL = "__target__"
 TIME_SERIES_ID = "item_id"
@@ -786,6 +788,29 @@ def make_tree_model(frequency: str) -> Pipeline:
     )
 
 
+def make_catboost_model(frequency: str) -> Pipeline:
+    return Pipeline(
+        [
+            ("features", make_preprocessor(frequency)),
+            (
+                "model",
+                CatBoostRegressor(
+                    loss_function="RMSE",
+                    eval_metric="RMSE",
+                    iterations=500,
+                    learning_rate=0.04,
+                    depth=6,
+                    l2_leaf_reg=3.0,
+                    random_seed=RANDOM_STATE,
+                    allow_writing_files=False,
+                    verbose=False,
+                    thread_count=1,
+                ),
+            ),
+        ]
+    )
+
+
 def make_linear_model(frequency: str) -> Pipeline:
     return Pipeline(
         [
@@ -1016,6 +1041,8 @@ def make_model(
 ) -> Any:
     if model_name == "xgboost":
         return make_tree_model(frequency)
+    if model_name == CATBOOST_MODEL:
+        return make_catboost_model(frequency)
     if model_name == "ridge":
         return make_linear_model(frequency)
     if model_name == AUTOGLUON_TABULAR_MODEL:
@@ -1525,6 +1552,7 @@ The compared models are:
 - `seasonal_mean`: historical mean by ACORN and calendar slot.
 - `ridge`: regularized linear regression.
 - `xgboost`: gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
+- `catboost`: CatBoost gradient boosting regression on the same engineered feature table.
 - `autogluon`: AutoGluon TabularPredictor AutoML regression on the same engineered feature table.
 - `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using the target history plus known future calendar, holiday, and weather covariates.
 

@@ -8,6 +8,7 @@ autogluon.tabular[catboost,lightgbm,xgboost]==1.5.0
 autogluon.timeseries==1.5.0
 blinker==1.9.0
 cachetools==7.1.4
+catboost==1.2.8
 certifi==2026.5.20
 charset-normalizer==3.4.7
 click==8.4.1
