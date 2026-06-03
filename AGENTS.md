@@ -105,7 +105,10 @@ Source and scripts:
 - `src/group5_energy/pipeline.py`
 - `scripts/group5_run_pipeline.py`
 - `scripts/group5_validate_outputs.py`
-- `dashboard/group5_streamlit.py`
+- `dashboard/group5_streamlit.py` (Main entrypoint)
+- `dashboard/data_loader.py` (Cached data access)
+- `dashboard/styles.py` (Premium theme & glassmorphic custom cards)
+- `dashboard/tabs/` (Modular sub-panels base class & implementations)
 
 Notebooks:
 
