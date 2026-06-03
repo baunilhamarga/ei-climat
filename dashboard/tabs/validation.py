@@ -14,21 +14,45 @@ class ValidationTab(BaseTab):
         metric_filter = data["metrics"][data["metrics"]["acorn"].isin(["ALL", *selected_acorns])]
         
         st.subheader("Model Metrics Matrix")
-        st.dataframe(metric_filter.sort_values(["frequency", "acorn", "rmse"]), width='stretch')
+        display_metrics = metric_filter.sort_values(["frequency", "acorn", "rmse"]).copy()
+        display_metrics["frequency"] = display_metrics["frequency"].map(StyleManager.FREQUENCY_MAP)
+        display_metrics["model"] = display_metrics["model"].map(StyleManager.MODEL_MAP)
+        display_metrics = display_metrics.rename(columns={
+            "frequency": "Forecast Frequency",
+            "acorn": "ACORN Segment",
+            "model": "Model",
+            "rmse": "Validation RMSE",
+            "n": "Observations (N)"
+        })
+        st.dataframe(display_metrics, width='stretch')
         
-        st.subheader("Overall Performance (acorn = ALL)")
+        st.subheader("Overall Performance (All ACORN Segments)")
+        overall_metrics = metric_filter[metric_filter["acorn"] == "ALL"].copy()
+        overall_metrics["frequency"] = overall_metrics["frequency"].map(StyleManager.FREQUENCY_MAP)
+        overall_metrics["model"] = overall_metrics["model"].map(StyleManager.MODEL_MAP)
+        
         fig_bar = px.bar(
-            metric_filter[metric_filter["acorn"] == "ALL"],
+            overall_metrics,
             x="model",
             y="rmse",
             color="frequency",
             barmode="group",
             title="Overall Validation RMSE",
+            labels={
+                "model": "Model",
+                "rmse": "Root Mean Squared Error (RMSE)",
+                "frequency": "Forecast Frequency"
+            }
         )
         st.plotly_chart(fig_bar, width='stretch')
 
         st.subheader("Interactive Predictions Comparison")
-        frequency = st.radio("Validation series frequency", ["daily", "half_hourly"], horizontal=True)
+        frequency = st.radio(
+            "Validation series frequency", 
+            ["daily", "half_hourly"], 
+            horizontal=True,
+            format_func=lambda x: StyleManager.FREQUENCY_MAP.get(x, x)
+        )
         valid = data["daily_valid" if frequency == "daily" else "half_valid"]
         valid = valid[valid["Acorn"].isin(selected_acorns)]
         
@@ -52,11 +76,22 @@ class ValidationTab(BaseTab):
             st.warning("No candidate models found in validation prediction columns.")
             return
 
-        model_col = st.selectbox("Select model to compare", model_options)
+        model_col = st.selectbox(
+            "Select model to compare", 
+            model_options,
+            format_func=lambda x: StyleManager.MODEL_MAP.get(x, x)
+        )
         
         plot_df = valid[["timestamp", "Acorn", "actual", model_col]].melt(
             id_vars=["timestamp", "Acorn"], var_name="series", value_name="value"
         )
+        
+        nice_model_name = StyleManager.MODEL_MAP.get(model_col, model_col)
+        series_map = {
+            "actual": "Actual",
+            model_col: nice_model_name
+        }
+        plot_df["series"] = plot_df["series"].map(series_map)
         
         fig_line = px.line(
             plot_df,
@@ -65,6 +100,12 @@ class ValidationTab(BaseTab):
             color="Acorn",
             line_dash="series",
             color_discrete_map=StyleManager.PALETTE,
-            title=f"Validation Actual vs {model_col}",
+            title=f"Validation Actual vs {nice_model_name}",
+            labels={
+                "timestamp": "Timestamp",
+                "value": "Electricity Consumption",
+                "Acorn": "ACORN Segment",
+                "series": "Series Type"
+            }
         )
         st.plotly_chart(fig_line, width='stretch')

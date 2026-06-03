@@ -10,6 +10,23 @@ class StyleManager:
         "ACORN-Q": "#8f3f46",  # Adversity - Crimson/maroon
     }
 
+    FREQUENCY_MAP = {
+        "half_hourly": "Half-Hourly",
+        "daily": "Daily"
+    }
+
+    MODEL_MAP = {
+        "xgboost": "XGBoost",
+        "ridge": "Ridge Regression",
+        "catboost": "CatBoost",
+        "lightgbm": "LightGBM",
+        "autogluon": "AutoGluon Tabular",
+        "autogluon_timeseries": "AutoGluon TimeSeries",
+        "previous_day": "Baseline: Previous Day",
+        "previous_week": "Baseline: Previous Week",
+        "seasonal_mean": "Baseline: Seasonal Mean"
+    }
+
     CSS = """
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
 

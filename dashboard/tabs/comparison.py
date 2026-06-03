@@ -21,7 +21,13 @@ class ComparisonTab(BaseTab):
         )
         
         st.subheader("Statistical Summary of Forecasts by Segment")
-        st.dataframe(daily_summary, width='stretch')
+        display_summary = daily_summary.rename(columns={
+            "Acorn": "ACORN Segment",
+            "mean": "Mean Predicted Daily Consumption (kWh)",
+            "min": "Minimum Predicted Daily Consumption (kWh)",
+            "max": "Maximum Predicted Daily Consumption (kWh)"
+        })
+        st.dataframe(display_summary, width='stretch')
         
         st.subheader("Comparison of Mean Daily Forecasted Consumption")
         fig_bar = px.bar(
@@ -31,5 +37,9 @@ class ComparisonTab(BaseTab):
             color="Acorn",
             color_discrete_map=StyleManager.PALETTE,
             title="Mean Forecast Daily Consumption by Segment",
+            labels={
+                "Acorn": "ACORN Segment",
+                "mean": "Mean Forecasted Daily Consumption (kWh)"
+            }
         )
         st.plotly_chart(fig_bar, width='stretch')

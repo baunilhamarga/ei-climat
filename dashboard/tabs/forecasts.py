@@ -21,6 +21,11 @@ class ForecastsTab(BaseTab):
             color="Acorn",
             color_discrete_map=StyleManager.PALETTE,
             title="48-Hour Half-Hourly Forecast",
+            labels={
+                "DateTime": "Date & Time",
+                "Conso_moy_predict": "Predicted Average Consumption (kW)",
+                "Acorn": "ACORN Segment"
+            }
         )
         st.plotly_chart(fig_half, width='stretch')
 
@@ -32,5 +37,10 @@ class ForecastsTab(BaseTab):
             color="Acorn",
             color_discrete_map=StyleManager.PALETTE,
             title="One-Month Daily Forecast",
+            labels={
+                "Date": "Date",
+                "Conso_kWh_predict": "Predicted Daily Consumption (kWh)",
+                "Acorn": "ACORN Segment"
+            }
         )
         st.plotly_chart(fig_daily, width='stretch')

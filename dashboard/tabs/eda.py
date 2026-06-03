@@ -21,6 +21,11 @@ class EDATab(BaseTab):
             color="Acorn",
             color_discrete_map=StyleManager.PALETTE,
             title="Historical Daily Consumption",
+            labels={
+                "Conso_kWh": "Daily Consumption (kWh)",
+                "Date": "Date",
+                "Acorn": "ACORN Segment"
+            }
         )
         st.plotly_chart(fig, width='stretch')
 
@@ -36,18 +41,44 @@ class EDATab(BaseTab):
             color="Acorn",
             color_discrete_map=StyleManager.PALETTE,
             title="Typical Half-Hourly Profile",
+            labels={
+                "time_of_day": "Hour of Day",
+                "mean_conso_moy": "Average Consumption (kW)",
+                "Acorn": "ACORN Segment"
+            }
         )
         col1.plotly_chart(fig_half, width='stretch')
 
-        weekly = data["weekly"][data["weekly"]["Acorn"].isin(selected_acorns)]
+        # Map weekday numbers (0=Monday, ..., 6=Sunday) to name strings
+        day_names = {
+            0: "Monday",
+            1: "Tuesday",
+            2: "Wednesday",
+            3: "Thursday",
+            4: "Friday",
+            5: "Saturday",
+            6: "Sunday"
+        }
+        weekly = data["weekly"][data["weekly"]["Acorn"].isin(selected_acorns)].copy()
+        weekly["weekday_name"] = weekly["weekday"].map(day_names)
+
         fig_weekly = px.line(
             weekly,
-            x="weekday",
+            x="weekday_name",
             y="mean_conso_kwh",
             color="Acorn",
             markers=True,
             color_discrete_map=StyleManager.PALETTE,
             title="Weekly Pattern",
+            labels={
+                "weekday_name": "Day of Week",
+                "mean_conso_kwh": "Average Daily Consumption (kWh)",
+                "Acorn": "ACORN Segment"
+            }
+        )
+        fig_weekly.update_xaxes(
+            categoryorder="array",
+            categoryarray=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         )
         col2.plotly_chart(fig_weekly, width='stretch')
 
@@ -60,6 +91,11 @@ class EDATab(BaseTab):
             color="Acorn",
             color_discrete_map=StyleManager.PALETTE,
             title="Temperature vs Daily Consumption",
+            labels={
+                "temperatureMean": "Mean Temperature (°C)",
+                "Conso_kWh": "Daily Consumption (kWh)",
+                "Acorn": "ACORN Segment"
+            }
         )
         col3.plotly_chart(fig_temp, width='stretch')
 
@@ -71,5 +107,10 @@ class EDATab(BaseTab):
             color="Acorn",
             color_discrete_map=StyleManager.PALETTE,
             title="Daily Autocorrelation",
+            labels={
+                "lag_days": "Lag (Days)",
+                "autocorrelation": "Autocorrelation Coefficient",
+                "Acorn": "ACORN Segment"
+            }
         )
         col4.plotly_chart(fig_autocorr, width='stretch')

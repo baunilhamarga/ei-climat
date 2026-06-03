@@ -23,19 +23,34 @@ class OverviewTab(BaseTab):
         half_model = best.loc[best["frequency"] == "half_hourly", "model"].iloc[0]
         daily_model = best.loc[best["frequency"] == "daily", "model"].iloc[0]
 
+        # Get human-readable names for KPIs
+        nice_half_model = StyleManager.MODEL_MAP.get(half_model, half_model)
+        nice_daily_model = StyleManager.MODEL_MAP.get(daily_model, daily_model)
+        nice_half_freq = StyleManager.FREQUENCY_MAP.get("half_hourly", "Half-Hourly")
+        nice_daily_freq = StyleManager.FREQUENCY_MAP.get("daily", "Daily")
+
         # Render premium glassmorphic cards
         kpi_html = f"""
         <div class="kpi-container">
-            {StyleManager.render_kpi_card("Half-hourly Predict Rows", f"{len(data['half_pred'])}", "Short-term horizon")}
-            {StyleManager.render_kpi_card("Daily Predict Rows", f"{len(data['daily_pred'])}", "Medium-term horizon")}
-            {StyleManager.render_kpi_card("Best 48h RMSE", f"{half_rmse:.4f}", f"Model: {half_model}")}
-            {StyleManager.render_kpi_card("Best Daily RMSE", f"{daily_rmse:.4f}", f"Model: {daily_model}")}
+            {StyleManager.render_kpi_card(f"{nice_half_freq} Predict Rows", f"{len(data['half_pred'])}", "Short-term horizon")}
+            {StyleManager.render_kpi_card(f"{nice_daily_freq} Predict Rows", f"{len(data['daily_pred'])}", "Medium-term horizon")}
+            {StyleManager.render_kpi_card("Best 48h RMSE", f"{half_rmse:.4f}", f"Model: {nice_half_model}")}
+            {StyleManager.render_kpi_card("Best Daily RMSE", f"{daily_rmse:.4f}", f"Model: {nice_daily_model}")}
         </div>
         """
         st.markdown(kpi_html, unsafe_allow_html=True)
 
         st.subheader("Selected Best Performing Models")
-        st.dataframe(best[["frequency", "model", "rmse", "n"]], width='stretch')
+        display_best = best[["frequency", "model", "rmse", "n"]].copy()
+        display_best["frequency"] = display_best["frequency"].map(StyleManager.FREQUENCY_MAP)
+        display_best["model"] = display_best["model"].map(StyleManager.MODEL_MAP)
+        display_best = display_best.rename(columns={
+            "frequency": "Forecast Frequency",
+            "model": "Best Model",
+            "rmse": "Validation RMSE",
+            "n": "Observations (N)"
+        })
+        st.dataframe(display_best, width='stretch')
 
         st.subheader("Key Visual Trends")
         figure_cols = st.columns(2)
@@ -57,6 +72,11 @@ class OverviewTab(BaseTab):
                 color="Acorn",
                 color_discrete_map=StyleManager.PALETTE,
                 title="Daily electricity consumption, 14-day rolling mean",
+                labels={
+                    "rolling_mean": "14-day Rolling Mean Consumption (kWh)",
+                    "Date": "Date",
+                    "Acorn": "ACORN Segment"
+                }
             )
             figure_cols[0].plotly_chart(fig_trend, width='stretch')
         else:
@@ -64,6 +84,8 @@ class OverviewTab(BaseTab):
 
         # Interactive Validation RMSE Comparison
         metric_subset = metrics[metrics["acorn"] == "ALL"].copy()
+        metric_subset["frequency"] = metric_subset["frequency"].map(StyleManager.FREQUENCY_MAP)
+        metric_subset["model"] = metric_subset["model"].map(StyleManager.MODEL_MAP)
         fig_rmse = px.bar(
             metric_subset,
             x="model",
@@ -71,5 +93,10 @@ class OverviewTab(BaseTab):
             color="frequency",
             barmode="group",
             title="Validation RMSE by model",
+            labels={
+                "model": "Model",
+                "rmse": "Root Mean Squared Error (RMSE)",
+                "frequency": "Forecast Frequency"
+            }
         )
         figure_cols[1].plotly_chart(fig_rmse, width='stretch')
