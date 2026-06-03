@@ -1,7 +1,11 @@
+# Full local environment for notebooks, modeling, AutoGluon, and the dashboard.
+# For Render dashboard deployment, install requirements-dashboard.txt instead.
 altair==6.1.0
 anyio==4.13.0
 asttokens==3.0.1
 attrs==26.1.0
+autogluon.tabular[catboost,lightgbm,xgboost]==1.5.0
+autogluon.timeseries==1.5.0
 blinker==1.9.0
 cachetools==7.1.4
 certifi==2026.5.20
@@ -36,9 +40,9 @@ matplotlib==3.10.9
 matplotlib-inline==0.2.2
 narwhals==2.22.0
 nest-asyncio==1.6.0
-numpy==2.4.6
+numpy>=1.25.0,<2.4.0
 packaging==26.2
-pandas==3.0.3
+pandas>=2.0.0,<2.4.0
 parso==0.8.7
 pexpect==4.9.0
 pillow==12.2.0
@@ -59,8 +63,8 @@ pyzmq==27.1.0
 referencing==0.37.0
 requests==2.34.2
 rpds-py==2026.5.1
-scikit-learn==1.8.0
-scipy==1.17.1
+scikit-learn>=1.4.0,<1.8.0
+scipy>=1.5.4,<1.17.0
 seaborn==0.13.2
 six==1.17.0
 smmap==5.0.3

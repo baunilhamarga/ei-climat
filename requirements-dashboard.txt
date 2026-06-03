@@ -1,0 +1,5 @@
+# Lightweight runtime dependencies for the deployed Streamlit dashboard.
+# Use this on Render so the app does not install the modeling stack.
+pandas>=2.0.0,<2.4.0
+plotly==6.7.0
+streamlit==1.58.0
