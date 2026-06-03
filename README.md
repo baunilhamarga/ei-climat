@@ -9,13 +9,26 @@ Group 5 forecasts UK household electricity consumption for:
 - `ACORN-Q` - Adversity
 
 The project includes exploratory analysis, validation metrics, filled forecast templates, a short report, and a Streamlit dashboard.
+The modeling pipeline compares baselines, ridge regression, gradient boosting, AutoGluon Tabular AutoML, and AutoGluon TimeSeries.
 
 ## Quick Setup
 
-Use the existing project virtual environment:
+Use the existing project virtual environment for the full local setup:
 
 ```bash
 EI-climat/bin/pip install -r requirements.txt
+```
+
+This installs the complete project environment, including notebooks, sklearn models, and both AutoGluon models.
+
+For lighter installs, use the split requirement files:
+
+```bash
+# Streamlit dashboard only, recommended for Render
+EI-climat/bin/pip install -r requirements-dashboard.txt
+
+# Local modeling and notebooks without the full frozen environment
+EI-climat/bin/pip install -r requirements-modeling.txt
 ```
 
 Generate the forecasts, metrics, figures, and report:
@@ -25,6 +38,21 @@ EI-climat/bin/python scripts/group5_run_pipeline.py
 ```
 
 This keeps the client-provided data files unchanged. It writes cleaned/intermediate data to `data/01_interim/group5`, model-ready feature files to `data/02_processed/group5_modeling`, and saved model pipelines under `models/short_term` and `models/medium_term`.
+
+AutoGluon is pinned to the latest stable `1.5.0` release checked for this project. The pipeline includes both `autogluon.tabular` and `autogluon.timeseries`.
+
+Training defaults can be adjusted before running the pipeline with:
+
+```bash
+export GROUP5_AUTOGLUON_PRESETS=medium_quality
+export GROUP5_AUTOGLUON_HALF_HOURLY_TIME_LIMIT=300
+export GROUP5_AUTOGLUON_DAILY_TIME_LIMIT=120
+export GROUP5_AUTOGLUON_TS_PRESETS=fast_training
+export GROUP5_AUTOGLUON_TS_HALF_HOURLY_TIME_LIMIT=300
+export GROUP5_AUTOGLUON_TS_DAILY_TIME_LIMIT=120
+```
+
+The TimeSeries model is compared on the same chronological validation subset and the same RMSE metric as the other models. It uses the target history plus known future calendar, holiday, and weather covariates instead of the manual lag/rolling feature table.
 
 Validate the generated prediction files:
 
@@ -39,6 +67,14 @@ EI-climat/bin/streamlit run dashboard/group5_streamlit.py
 ```
 
 Then open the local URL printed by Streamlit, usually `http://localhost:8501`.
+
+For Render, set the build command to:
+
+```bash
+pip install -r requirements-dashboard.txt
+```
+
+The deployed dashboard reads saved CSV metrics, predictions, and figures. It should not install AutoGluon because it does not train models at runtime.
 
 ## Main Outputs
 

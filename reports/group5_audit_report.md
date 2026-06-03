@@ -290,6 +290,17 @@ Concise report:
 - `reports/group5_report.md`
 - Good base for the final write-up, but this audit file contains more supporting detail.
 
+## Pending AutoGluon extensions
+
+After this audit was generated, the pipeline was extended with two AutoGluon trainable models:
+
+- `autogluon`: AutoGluon TabularPredictor on the engineered feature table.
+- `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using target history plus known future calendar, holiday, and weather covariates.
+
+The pipeline has not been rerun yet, so the metrics and selected-model results in this audit do not include either AutoGluon model.
+
+Do not cite AutoGluon validation results until `EI-climat/bin/python scripts/group5_run_pipeline.py` has been rerun and `outputs/group5/metrics/validation_metrics.csv` contains both `autogluon` and `autogluon_timeseries` rows.
+
 ## Limits and risks to mention
 
 1. Forecasts are point forecasts. They do not include uncertainty intervals.

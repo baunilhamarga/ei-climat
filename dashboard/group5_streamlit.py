@@ -166,10 +166,20 @@ def main() -> None:
         frequency = st.radio("Validation series", ["daily", "half_hourly"], horizontal=True)
         valid = data["daily_valid" if frequency == "daily" else "half_valid"]
         valid = valid[valid["Acorn"].isin(selected_acorns)]
-        model_col = st.selectbox(
-            "Model",
-            ["gradient_boosting", "ridge", "seasonal_mean", "previous_week", "previous_day"],
-        )
+        model_options = [
+            model
+            for model in [
+                "autogluon_timeseries",
+                "autogluon",
+                "gradient_boosting",
+                "ridge",
+                "seasonal_mean",
+                "previous_week",
+                "previous_day",
+            ]
+            if model in valid.columns
+        ]
+        model_col = st.selectbox("Model", model_options)
         plot_df = valid[["timestamp", "Acorn", "actual", model_col]].melt(
             id_vars=["timestamp", "Acorn"], var_name="series", value_name="value"
         )
