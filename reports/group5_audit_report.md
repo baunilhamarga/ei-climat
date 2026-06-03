@@ -157,6 +157,8 @@ Validation is chronological, not shuffled.
 | Half-hourly | 2013-12-16 00:00:00 | tests the 30-minute model on later historical data before the forecast period |
 | Daily | 2013-12-13 | tests the daily model on later historical data before the forecast period |
 
+Standard random cross-validation was not used because the target is a time series. Random folds would mix past and future timestamps, which can leak future behavior into training and make the RMSE look better than it would be in a real forecast setting. A rolling or expanding-window temporal cross-validation would be a valid extension, but it would multiply training time across all trainable models. For this project, one fixed chronological holdout gives a direct and explainable test on the most recent historical period before the forecast window.
+
 Compared models:
 
 - `previous_day`: same ACORN value from the previous day.
