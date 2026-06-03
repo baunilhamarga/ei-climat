@@ -27,6 +27,7 @@ class EDATab(BaseTab):
                 "Acorn": "ACORN Segment"
             }
         )
+        StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
         st.plotly_chart(fig, width='stretch')
 
         # Half-Hourly and Weekly Profiles Side-by-Side
@@ -47,6 +48,7 @@ class EDATab(BaseTab):
                 "Acorn": "ACORN Segment"
             }
         )
+        StyleManager.style_plotly_chart(fig_half, st.session_state.theme_mode)
         col1.plotly_chart(fig_half, width='stretch')
 
         # Map weekday numbers (0=Monday, ..., 6=Sunday) to name strings
@@ -80,6 +82,7 @@ class EDATab(BaseTab):
             categoryorder="array",
             categoryarray=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         )
+        StyleManager.style_plotly_chart(fig_weekly, st.session_state.theme_mode)
         col2.plotly_chart(fig_weekly, width='stretch')
 
         # Temperature Scatter and Autocorrelation Plots Side-by-Side
@@ -97,6 +100,7 @@ class EDATab(BaseTab):
                 "Acorn": "ACORN Segment"
             }
         )
+        StyleManager.style_plotly_chart(fig_temp, st.session_state.theme_mode)
         col3.plotly_chart(fig_temp, width='stretch')
 
         autocorr = data["autocorr"][data["autocorr"]["Acorn"].isin(selected_acorns)]
@@ -113,4 +117,5 @@ class EDATab(BaseTab):
                 "Acorn": "ACORN Segment"
             }
         )
+        StyleManager.style_plotly_chart(fig_autocorr, st.session_state.theme_mode)
         col4.plotly_chart(fig_autocorr, width='stretch')

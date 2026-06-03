@@ -27,6 +27,7 @@ class ForecastsTab(BaseTab):
                 "Acorn": "ACORN Segment"
             }
         )
+        StyleManager.style_plotly_chart(fig_half, st.session_state.theme_mode)
         st.plotly_chart(fig_half, width='stretch')
 
         st.subheader("Medium-Term Forecast (1 Month)")
@@ -43,4 +44,5 @@ class ForecastsTab(BaseTab):
                 "Acorn": "ACORN Segment"
             }
         )
+        StyleManager.style_plotly_chart(fig_daily, st.session_state.theme_mode)
         st.plotly_chart(fig_daily, width='stretch')

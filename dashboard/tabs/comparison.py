@@ -21,13 +21,15 @@ class ComparisonTab(BaseTab):
         )
         
         st.subheader("Statistical Summary of Forecasts by Segment")
+        for col in ["mean", "min", "max"]:
+            daily_summary[col] = daily_summary[col].map(lambda x: f"{x:.3f}")
         display_summary = daily_summary.rename(columns={
             "Acorn": "ACORN Segment",
             "mean": "Mean Predicted Daily Consumption (kWh)",
             "min": "Minimum Predicted Daily Consumption (kWh)",
             "max": "Maximum Predicted Daily Consumption (kWh)"
         })
-        st.dataframe(display_summary, width='stretch')
+        st.markdown(f'<div class="scrollable-table-wrapper">{display_summary.to_html(index=False)}</div>', unsafe_allow_html=True)
         
         st.subheader("Comparison of Mean Daily Forecasted Consumption")
         fig_bar = px.bar(
@@ -42,4 +44,5 @@ class ComparisonTab(BaseTab):
                 "mean": "Mean Forecasted Daily Consumption (kWh)"
             }
         )
+        StyleManager.style_plotly_chart(fig_bar, st.session_state.theme_mode)
         st.plotly_chart(fig_bar, width='stretch')

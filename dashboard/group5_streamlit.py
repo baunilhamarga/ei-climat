@@ -72,11 +72,11 @@ class ForecastDashboardApp:
             st.stop()
 
         # Header layout with Title and the Acorn selector in columns
-        col1, col2 = st.columns([5, 3], vertical_alignment="bottom")
+        col1, col2 = st.columns([2, 3], vertical_alignment="bottom")
         with col1:
             st.title("Group 5 Energy Forecasts")
         with col2:
-            col2_filter, col2_toggle = st.columns([6, 1], vertical_alignment="bottom")
+            col2_filter, col2_toggle = st.columns([8, 1], vertical_alignment="bottom")
             with col2_filter:
                 selected_acorns = st.pills(
                     "Filter ACORN Segments",

@@ -44,13 +44,14 @@ class OverviewTab(BaseTab):
         display_best = best[["frequency", "model", "rmse", "n"]].copy()
         display_best["frequency"] = display_best["frequency"].map(StyleManager.FREQUENCY_MAP)
         display_best["model"] = display_best["model"].map(StyleManager.MODEL_MAP)
+        display_best["rmse"] = display_best["rmse"].map(lambda x: f"{x:.4f}")
         display_best = display_best.rename(columns={
             "frequency": "Forecast Frequency",
             "model": "Best Model",
             "rmse": "Validation RMSE",
             "n": "Observations (N)"
         })
-        st.dataframe(display_best, width='stretch')
+        st.markdown(f'<div class="scrollable-table-wrapper">{display_best.to_html(index=False)}</div>', unsafe_allow_html=True)
 
         st.subheader("Key Visual Trends")
         figure_cols = st.columns(2)
@@ -78,6 +79,7 @@ class OverviewTab(BaseTab):
                     "Acorn": "ACORN Segment"
                 }
             )
+            StyleManager.style_plotly_chart(fig_trend, st.session_state.theme_mode)
             figure_cols[0].plotly_chart(fig_trend, width='stretch')
         else:
             figure_cols[0].warning("No data selected to display trend.")
@@ -99,4 +101,5 @@ class OverviewTab(BaseTab):
                 "frequency": "Forecast Frequency"
             }
         )
+        StyleManager.style_plotly_chart(fig_rmse, st.session_state.theme_mode)
         figure_cols[1].plotly_chart(fig_rmse, width='stretch')

@@ -15,8 +15,10 @@ class ValidationTab(BaseTab):
         
         st.subheader("Model Metrics Matrix")
         display_metrics = metric_filter.sort_values(["frequency", "acorn", "rmse"]).copy()
+        display_metrics = display_metrics[["frequency", "acorn", "model", "rmse", "n"]]
         display_metrics["frequency"] = display_metrics["frequency"].map(StyleManager.FREQUENCY_MAP)
         display_metrics["model"] = display_metrics["model"].map(StyleManager.MODEL_MAP)
+        display_metrics["rmse"] = display_metrics["rmse"].map(lambda x: f"{x:.4f}")
         display_metrics = display_metrics.rename(columns={
             "frequency": "Forecast Frequency",
             "acorn": "ACORN Segment",
@@ -24,7 +26,7 @@ class ValidationTab(BaseTab):
             "rmse": "Validation RMSE",
             "n": "Observations (N)"
         })
-        st.dataframe(display_metrics, width='stretch')
+        st.markdown(f'<div class="scrollable-table-wrapper">{display_metrics.to_html(index=False)}</div>', unsafe_allow_html=True)
         
         st.subheader("Overall Performance (All ACORN Segments)")
         overall_metrics = metric_filter[metric_filter["acorn"] == "ALL"].copy()
@@ -44,6 +46,7 @@ class ValidationTab(BaseTab):
                 "frequency": "Forecast Frequency"
             }
         )
+        StyleManager.style_plotly_chart(fig_bar, st.session_state.theme_mode)
         st.plotly_chart(fig_bar, width='stretch')
 
         st.subheader("Interactive Predictions Comparison")
@@ -108,4 +111,5 @@ class ValidationTab(BaseTab):
                 "series": "Series Type"
             }
         )
+        StyleManager.style_plotly_chart(fig_line, st.session_state.theme_mode)
         st.plotly_chart(fig_line, width='stretch')
