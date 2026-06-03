@@ -2,22 +2,22 @@
   "half_hourly_rows": 288,
   "daily_rows": 96,
   "parquet_available": true,
-  "selected_half_hourly_model": "gradient_boosting",
-  "selected_daily_model": "ridge",
-  "interim_csv_dir": "/home/baunilha/Repositories/ei-climat/data/01_interim/group5/csv",
-  "interim_parquet_dir": "/home/baunilha/Repositories/ei-climat/data/01_interim/group5/parquet",
-  "model_ready_csv_dir": "/home/baunilha/Repositories/ei-climat/data/02_processed/group5_modeling/csv",
-  "model_ready_parquet_dir": "/home/baunilha/Repositories/ei-climat/data/02_processed/group5_modeling/parquet",
-  "short_term_model_path": "/home/baunilha/Repositories/ei-climat/models/short_term/group5_half_hourly_selected.joblib",
-  "medium_term_model_path": "/home/baunilha/Repositories/ei-climat/models/medium_term/group5_daily_selected.joblib",
+  "selected_half_hourly_model": "xgboost",
+  "selected_daily_model": "xgboost",
+  "interim_csv_dir": "/home/artur/Documents/EIPARACOMMIT/ei-climat/data/01_interim/group5/csv",
+  "interim_parquet_dir": "/home/artur/Documents/EIPARACOMMIT/ei-climat/data/01_interim/group5/parquet",
+  "model_ready_csv_dir": "/home/artur/Documents/EIPARACOMMIT/ei-climat/data/02_processed/group5_modeling/csv",
+  "model_ready_parquet_dir": "/home/artur/Documents/EIPARACOMMIT/ei-climat/data/02_processed/group5_modeling/parquet",
+  "short_term_model_path": "/home/artur/Documents/EIPARACOMMIT/ei-climat/models/short_term/group5_half_hourly_selected.joblib",
+  "medium_term_model_path": "/home/artur/Documents/EIPARACOMMIT/ei-climat/models/medium_term/group5_daily_selected.joblib",
   "best_half_hourly_overall": {
-    "model": "gradient_boosting",
-    "rmse": 0.007596389888832533,
+    "model": "xgboost",
+    "rmse": 0.008256109106082864,
     "n": 4032
   },
   "best_daily_overall": {
-    "model": "ridge",
-    "rmse": 0.37725652530315557,
+    "model": "xgboost",
+    "rmse": 0.3531511196991238,
     "n": 93
   }
 }

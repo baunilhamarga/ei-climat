@@ -171,7 +171,7 @@ def main() -> None:
             for model in [
                 "autogluon_timeseries",
                 "autogluon",
-                "gradient_boosting",
+                "xgboost",
                 "ridge",
                 "seasonal_mean",
                 "previous_week",

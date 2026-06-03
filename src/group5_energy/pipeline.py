@@ -16,12 +16,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from xgboost import XGBRegressor
 
 from .config import (
     ACORN_GROUPS,
@@ -116,7 +116,7 @@ DAILY_CATEGORICAL_FEATURES = ["Acorn", "icon", "precipType"]
 AUTOGLUON_TABULAR_MODEL = "autogluon"
 AUTOGLUON_TIMESERIES_MODEL = "autogluon_timeseries"
 AUTOGLUON_MODEL_NAMES = (AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
-TRAINABLE_MODEL_NAMES = ("ridge", "gradient_boosting", AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
+TRAINABLE_MODEL_NAMES = ("ridge", "xgboost", AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
 BASELINE_MODEL_NAMES = ("previous_day", "previous_week", "seasonal_mean")
 AUTOGLUON_LABEL = "__target__"
 TIME_SERIES_ID = "item_id"
@@ -767,12 +767,19 @@ def make_tree_model(frequency: str) -> Pipeline:
             ("features", make_preprocessor(frequency)),
             (
                 "model",
-                HistGradientBoostingRegressor(
-                    max_iter=220,
-                    learning_rate=0.055,
-                    max_leaf_nodes=31,
-                    l2_regularization=0.03,
+                XGBRegressor(
+                    objective="reg:squarederror",
+                    eval_metric="rmse",
+                    n_estimators=350,
+                    learning_rate=0.04,
+                    max_depth=4,
+                    subsample=0.85,
+                    colsample_bytree=0.85,
+                    reg_lambda=1.0,
+                    tree_method="hist",
+                    n_jobs=1,
                     random_state=RANDOM_STATE,
+                    verbosity=0,
                 ),
             ),
         ]
@@ -1007,7 +1014,7 @@ def make_model(
     model_path: Path | None = None,
     prediction_length: int | None = None,
 ) -> Any:
-    if model_name == "gradient_boosting":
+    if model_name == "xgboost":
         return make_tree_model(frequency)
     if model_name == "ridge":
         return make_linear_model(frequency)
@@ -1517,7 +1524,7 @@ The compared models are:
 - `previous_week`: same ACORN value from seven days earlier.
 - `seasonal_mean`: historical mean by ACORN and calendar slot.
 - `ridge`: regularized linear regression.
-- `gradient_boosting`: tree-based regression using calendar, weather, holiday, lag, and rolling features.
+- `xgboost`: gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
 - `autogluon`: AutoGluon TabularPredictor AutoML regression on the same engineered feature table.
 - `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using the target history plus known future calendar, holiday, and weather covariates.
 

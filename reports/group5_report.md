@@ -45,18 +45,18 @@ The compared models are:
 - `previous_week`: same ACORN value from seven days earlier.
 - `seasonal_mean`: historical mean by ACORN and calendar slot.
 - `ridge`: regularized linear regression.
-- `gradient_boosting`: tree-based regression using calendar, weather, holiday, lag, and rolling features.
+- `xgboost`: gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
 
 Overall validation RMSE:
 
 | frequency | model | acorn | rmse | n |
 | --- | --- | --- | --- | --- |
+| daily | xgboost | ALL | 0.35315 | 93 |
 | daily | ridge | ALL | 0.37726 | 93 |
-| daily | gradient_boosting | ALL | 0.38485 | 93 |
 | daily | previous_day | ALL | 0.48349 | 93 |
 | daily | previous_week | ALL | 0.49415 | 93 |
 | daily | seasonal_mean | ALL | 1.5379 | 93 |
-| half_hourly | gradient_boosting | ALL | 0.0076 | 4032 |
+| half_hourly | xgboost | ALL | 0.00826 | 4032 |
 | half_hourly | ridge | ALL | 0.00993 | 4032 |
 | half_hourly | previous_day | ALL | 0.02117 | 4032 |
 | half_hourly | previous_week | ALL | 0.02422 | 4032 |
@@ -64,8 +64,8 @@ Overall validation RMSE:
 
 Selected final trainable models:
 
-- Half-hourly: `gradient_boosting` with RMSE `0.00760`.
-- Daily: `ridge` with RMSE `0.37726`.
+- Half-hourly: `xgboost` with RMSE `0.00826`.
+- Daily: `xgboost` with RMSE `0.35315`.
 
 ## Final Outputs
 

@@ -163,7 +163,7 @@ Compared models:
 - `previous_week`: same ACORN value from seven days earlier.
 - `seasonal_mean`: historical mean by ACORN and calendar slot.
 - `ridge`: regularized linear regression.
-- `gradient_boosting`: tree-based regression using histogram gradient boosting.
+- `xgboost`: gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
 
 The model pipelines impute numeric and categorical features. Categorical features are one-hot encoded. The ridge model also scales transformed features. Predictions are clipped at zero to avoid invalid negative electricity values.
 
@@ -171,19 +171,19 @@ Selected models from current validation:
 
 | Horizon | Selected model | Overall RMSE | Validation rows |
 | --- | --- | ---: | ---: |
-| Half-hourly | gradient_boosting | 0.007596 | 4032 |
-| Daily | ridge | 0.377257 | 93 |
+| Half-hourly | xgboost | 0.008256 | 4032 |
+| Daily | xgboost | 0.353151 | 93 |
 
 Overall validation metrics:
 
 | frequency | model | acorn | rmse | n |
 | --- | --- | --- | --- | --- |
+| daily | xgboost | ALL | 0.353151 | 93 |
 | daily | ridge | ALL | 0.377257 | 93 |
-| daily | gradient_boosting | ALL | 0.384853 | 93 |
 | daily | previous_day | ALL | 0.483489 | 93 |
 | daily | previous_week | ALL | 0.494148 | 93 |
 | daily | seasonal_mean | ALL | 1.537880 | 93 |
-| half_hourly | gradient_boosting | ALL | 0.007596 | 4032 |
+| half_hourly | xgboost | ALL | 0.008256 | 4032 |
 | half_hourly | ridge | ALL | 0.009935 | 4032 |
 | half_hourly | previous_day | ALL | 0.021174 | 4032 |
 | half_hourly | previous_week | ALL | 0.024217 | 4032 |
@@ -193,28 +193,28 @@ Trainable model metrics by segment:
 
 | frequency | model | acorn | rmse | n |
 | --- | --- | --- | --- | --- |
-| daily | gradient_boosting | ACORN-E | 0.417996 | 31 |
+| daily | xgboost | ACORN-E | 0.387952 | 31 |
 | daily | ridge | ACORN-E | 0.420502 | 31 |
+| daily | xgboost | ACORN-F | 0.415606 | 31 |
 | daily | ridge | ACORN-F | 0.424276 | 31 |
-| daily | gradient_boosting | ACORN-F | 0.457392 | 31 |
-| daily | gradient_boosting | ACORN-Q | 0.245779 | 31 |
+| daily | xgboost | ACORN-Q | 0.225638 | 31 |
 | daily | ridge | ACORN-Q | 0.264832 | 31 |
+| daily | xgboost | ALL | 0.353151 | 93 |
 | daily | ridge | ALL | 0.377257 | 93 |
-| daily | gradient_boosting | ALL | 0.384853 | 93 |
-| half_hourly | gradient_boosting | ACORN-E | 0.007536 | 1344 |
+| half_hourly | xgboost | ACORN-E | 0.008392 | 1344 |
 | half_hourly | ridge | ACORN-E | 0.010833 | 1344 |
-| half_hourly | gradient_boosting | ACORN-F | 0.008292 | 1344 |
+| half_hourly | xgboost | ACORN-F | 0.008902 | 1344 |
 | half_hourly | ridge | ACORN-F | 0.010313 | 1344 |
-| half_hourly | gradient_boosting | ACORN-Q | 0.006897 | 1344 |
+| half_hourly | xgboost | ACORN-Q | 0.007403 | 1344 |
 | half_hourly | ridge | ACORN-Q | 0.008508 | 1344 |
-| half_hourly | gradient_boosting | ALL | 0.007596 | 4032 |
+| half_hourly | xgboost | ALL | 0.008256 | 4032 |
 | half_hourly | ridge | ALL | 0.009935 | 4032 |
 
 Interpretation for report writing:
 
-1. The half-hourly gradient boosting model clearly improves on previous-day, previous-week, seasonal mean, and ridge baselines.
-2. The daily ridge model has the best overall daily RMSE, slightly ahead of gradient boosting.
-3. Gradient boosting still performs best on ACORN-E and ACORN-Q in the daily split, but ridge wins overall because it is more stable across all three groups.
+1. The half-hourly XGBoost model improves on previous-day, previous-week, seasonal mean, and ridge baselines.
+2. The daily XGBoost model now has the best overall daily RMSE, ahead of ridge.
+3. XGBoost performs best on all three ACORN groups in the daily split after the current preprocessing choices.
 4. The baseline comparison is important because it shows the model adds value beyond simple repetition.
 
 ## Final prediction checks
@@ -249,10 +249,10 @@ Final output files:
 Saved models:
 
 - `models/short_term/group5_half_hourly_selected.joblib`
-- `models/short_term/group5_half_hourly_gradient_boosting.joblib`
+- `models/short_term/group5_half_hourly_xgboost.joblib`
 - `models/medium_term/group5_daily_selected.joblib`
 - `models/medium_term/group5_daily_ridge.joblib`
-- `models/medium_term/group5_daily_gradient_boosting.joblib`
+- `models/medium_term/group5_daily_xgboost.joblib`
 
 ## Notebook map
 
@@ -327,4 +327,4 @@ We used a reproducible Python pipeline for Group 5, covering ACORN-E, ACORN-F, a
 
 ## Copy-ready short results paragraph
 
-The selected short-term model is gradient boosting, with an overall half-hourly validation RMSE of 0.00760 over 4032 validation rows. The selected medium-term model is ridge regression, with an overall daily validation RMSE of 0.37726 over 93 validation rows. Both selected models improve on simple repetition and seasonal-mean baselines. The final exported files contain 288 half-hourly predictions and 96 daily predictions, with no missing values and no duplicate ACORN/time keys.
+The selected short-term model is XGBoost, with an overall half-hourly validation RMSE of 0.00826 over 4032 validation rows. The selected medium-term model is also XGBoost, with an overall daily validation RMSE of 0.35315 over 93 validation rows. Both selected models improve on simple repetition and seasonal-mean baselines. The final exported files contain 288 half-hourly predictions and 96 daily predictions, with no missing values and no duplicate ACORN/time keys.
