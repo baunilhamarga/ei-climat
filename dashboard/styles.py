@@ -49,6 +49,16 @@ class StyleManager:
         padding-bottom: 3.5rem !important;
     }
 
+    /* Force dropdown selectboxes, multi-selects, and list options to show pointer cursor on hover */
+    div[data-testid="stSelectbox"] [data-baseweb="select"],
+    div[data-testid="stSelectbox"] [data-baseweb="select"] div,
+    div[data-testid="stMultiSelect"] [data-baseweb="select"],
+    div[data-testid="stMultiSelect"] [data-baseweb="select"] div,
+    div[data-baseweb="popover"] [role="option"],
+    div[data-baseweb="popover"] li {
+        cursor: pointer !important;
+    }
+
     /* Hide Streamlit default MainMenu, Header, and Footer */
     #MainMenu, footer, header, [data-testid="stHeader"] {
         visibility: hidden !important;
