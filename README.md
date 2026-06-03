@@ -15,7 +15,7 @@ The project includes exploratory analysis, validation metrics, filled forecast t
 Use the existing project virtual environment:
 
 ```bash
-EI-climat/bin/pip install -r requirements-group5.txt
+EI-climat/bin/pip install -r requirements.txt
 ```
 
 Generate the forecasts, metrics, figures, and report:
