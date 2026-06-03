@@ -3,9 +3,10 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib-group5")
 
@@ -112,7 +113,62 @@ DAILY_NUMERIC_FEATURES = [
 ]
 
 DAILY_CATEGORICAL_FEATURES = ["Acorn", "icon", "precipType"]
-TRAINABLE_MODEL_NAMES = ("ridge", "gradient_boosting")
+AUTOGLUON_TABULAR_MODEL = "autogluon"
+AUTOGLUON_TIMESERIES_MODEL = "autogluon_timeseries"
+AUTOGLUON_MODEL_NAMES = (AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
+TRAINABLE_MODEL_NAMES = ("ridge", "gradient_boosting", AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
+BASELINE_MODEL_NAMES = ("previous_day", "previous_week", "seasonal_mean")
+AUTOGLUON_LABEL = "__target__"
+TIME_SERIES_ID = "item_id"
+TIME_SERIES_TIMESTAMP = "timestamp"
+TIME_SERIES_TARGET = "target"
+
+HALF_TIME_SERIES_KNOWN_COVARIATES = [
+    "nb_clients",
+    "hour",
+    "minute",
+    "half_hour_slot",
+    "weekday",
+    "is_weekend",
+    "month",
+    "dayofyear",
+    "weekofyear",
+    "is_holiday",
+    "temperature",
+    "temperature_half_hour",
+    "apparentTemperature",
+    "dewPoint",
+    "humidity",
+    "windSpeed",
+    "pressure",
+    "visibility",
+    "windBearing",
+]
+
+DAILY_TIME_SERIES_KNOWN_COVARIATES = [
+    "nb_clients",
+    "weekday",
+    "is_weekend",
+    "month",
+    "dayofyear",
+    "weekofyear",
+    "is_holiday",
+    "temperatureMax",
+    "temperatureMin",
+    "temperatureHigh",
+    "temperatureLow",
+    "temperatureMean",
+    "temperatureRange",
+    "apparentTemperatureMax",
+    "apparentTemperatureMin",
+    "humidity",
+    "windSpeed",
+    "cloudCover",
+    "pressure",
+    "visibility",
+    "uvIndex",
+    "moonPhase",
+]
 
 
 @dataclass
@@ -176,14 +232,27 @@ def run_pipeline() -> PipelineResult:
         validation_start=pd.Timestamp(DAILY_VALIDATION_START),
     )
 
-    half_model = make_model(half_model_name, "half_hourly")
-    daily_model = make_model(daily_model_name, "daily")
-    half_model.fit(feature_matrix(half_features, "half_hourly"), half_features[HALF_TARGET])
-    daily_model.fit(feature_matrix(daily_features, "daily"), daily_features[DAILY_TARGET])
+    half_model = fit_final_model(
+        half_model_name,
+        "half_hourly",
+        half_features,
+        half_future,
+        HALF_TARGET,
+        "DateTime",
+    )
+    daily_model = fit_final_model(
+        daily_model_name,
+        "daily",
+        daily_features,
+        daily_future,
+        DAILY_TARGET,
+        "Date",
+    )
     save_models(half_model, daily_model, half_model_name, daily_model_name)
 
-    half_predictions = recursive_forecast(
+    half_predictions = forecast_with_model(
         half_model,
+        half_model_name,
         half_features,
         half_future,
         frequency="half_hourly",
@@ -191,8 +260,9 @@ def run_pipeline() -> PipelineResult:
         prediction_col="Conso_moy_predict",
         time_col="DateTime",
     )
-    daily_predictions = recursive_forecast(
+    daily_predictions = forecast_with_model(
         daily_model,
+        daily_model_name,
         daily_features,
         daily_future,
         frequency="daily",
@@ -241,16 +311,67 @@ def ensure_output_dirs() -> None:
         directory.mkdir(parents=True, exist_ok=True)
 
 
+def model_dir(frequency: str) -> Path:
+    if frequency == "half_hourly":
+        return SHORT_TERM_MODEL_DIR
+    if frequency == "daily":
+        return MEDIUM_TERM_MODEL_DIR
+    raise ValueError(f"Unsupported frequency: {frequency}")
+
+
+def model_stem(frequency: str) -> str:
+    if frequency == "half_hourly":
+        return "group5_half_hourly"
+    if frequency == "daily":
+        return "group5_daily"
+    raise ValueError(f"Unsupported frequency: {frequency}")
+
+
+def model_storage_path(frequency: str, model_name: str, selected: bool = False) -> Path:
+    suffix = "selected" if selected else model_name
+    if model_name in AUTOGLUON_MODEL_NAMES:
+        return model_dir(frequency) / f"{model_stem(frequency)}_{suffix}"
+    return model_dir(frequency) / f"{model_stem(frequency)}_{suffix}.joblib"
+
+
+def autogluon_validation_path(frequency: str, model_name: str) -> Path:
+    return model_dir(frequency) / f"{model_stem(frequency)}_{model_name}_validation"
+
+
 def save_models(
-    half_model: Pipeline,
-    daily_model: Pipeline,
+    half_model: Any,
+    daily_model: Any,
     half_model_name: str,
     daily_model_name: str,
 ) -> None:
-    joblib.dump(half_model, SHORT_TERM_MODEL_DIR / "group5_half_hourly_selected.joblib")
-    joblib.dump(half_model, SHORT_TERM_MODEL_DIR / f"group5_half_hourly_{half_model_name}.joblib")
-    joblib.dump(daily_model, MEDIUM_TERM_MODEL_DIR / "group5_daily_selected.joblib")
-    joblib.dump(daily_model, MEDIUM_TERM_MODEL_DIR / f"group5_daily_{daily_model_name}.joblib")
+    save_final_model(half_model, "half_hourly", half_model_name)
+    save_final_model(daily_model, "daily", daily_model_name)
+
+
+def save_final_model(model: Any, frequency: str, model_name: str) -> None:
+    reset_stale_selected_model(frequency, model_name)
+    selected_path = model_storage_path(frequency, model_name, selected=True)
+    named_path = model_storage_path(frequency, model_name, selected=False)
+    if model_name in AUTOGLUON_MODEL_NAMES:
+        model.copy_to(named_path)
+        return
+    joblib.dump(model, selected_path)
+    joblib.dump(model, named_path)
+
+
+def reset_path(path: Path) -> None:
+    if path.is_dir():
+        shutil.rmtree(path)
+    elif path.exists():
+        path.unlink()
+
+
+def reset_stale_selected_model(frequency: str, model_name: str) -> None:
+    stem = model_stem(frequency)
+    if model_name in AUTOGLUON_MODEL_NAMES:
+        reset_path(model_dir(frequency) / f"{stem}_selected.joblib")
+    else:
+        reset_path(model_dir(frequency) / f"{stem}_selected")
 
 
 def parquet_available() -> bool:
@@ -668,11 +789,241 @@ def make_linear_model(frequency: str) -> Pipeline:
     )
 
 
-def make_model(model_name: str, frequency: str) -> Pipeline:
+class AutoGluonTabularModel:
+    def __init__(self, frequency: str, path: Path):
+        self.frequency = frequency
+        self.path = path
+        self.predictor = None
+        self.presets = os.environ.get("GROUP5_AUTOGLUON_PRESETS", "medium_quality")
+        self.time_limit = autogluon_time_limit(frequency)
+        self.num_gpus = int(os.environ.get("GROUP5_AUTOGLUON_NUM_GPUS", "0"))
+        self.verbosity = int(os.environ.get("GROUP5_AUTOGLUON_VERBOSITY", "0"))
+
+    def fit(self, x: pd.DataFrame, y: pd.Series) -> "AutoGluonTabularModel":
+        TabularPredictor = autogluon_predictor_class()
+        train_data = x.copy()
+        train_data[AUTOGLUON_LABEL] = pd.Series(y).to_numpy()
+        reset_path(self.path)
+        predictor = TabularPredictor(
+            label=AUTOGLUON_LABEL,
+            problem_type="regression",
+            eval_metric="root_mean_squared_error",
+            path=str(self.path),
+            verbosity=self.verbosity,
+        )
+        fit_kwargs: dict[str, Any] = {
+            "train_data": train_data,
+            "presets": self.presets,
+            "num_gpus": self.num_gpus,
+        }
+        if self.time_limit > 0:
+            fit_kwargs["time_limit"] = self.time_limit
+        num_cpus = os.environ.get("GROUP5_AUTOGLUON_NUM_CPUS")
+        if num_cpus:
+            fit_kwargs["num_cpus"] = int(num_cpus)
+        predictor.fit(**fit_kwargs)
+        self.predictor = predictor
+        return self
+
+    def predict(self, x: pd.DataFrame) -> np.ndarray:
+        if self.predictor is None:
+            TabularPredictor = autogluon_predictor_class()
+            self.predictor = TabularPredictor.load(str(self.path))
+        return np.asarray(self.predictor.predict(x.copy()), dtype=float)
+
+    def copy_to(self, destination: Path) -> None:
+        if self.path.resolve() == destination.resolve():
+            return
+        reset_path(destination)
+        shutil.copytree(self.path, destination)
+
+
+class AutoGluonTimeSeriesModel:
+    def __init__(self, frequency: str, path: Path, prediction_length: int):
+        self.frequency = frequency
+        self.path = path
+        self.prediction_length = prediction_length
+        self.predictor = None
+        self.presets = os.environ.get("GROUP5_AUTOGLUON_TS_PRESETS", "fast_training")
+        self.time_limit = autogluon_timeseries_time_limit(frequency)
+        self.verbosity = int(os.environ.get("GROUP5_AUTOGLUON_TS_VERBOSITY", "0"))
+
+    def fit_history(self, history: pd.DataFrame, target_col: str, time_col: str) -> "AutoGluonTimeSeriesModel":
+        TimeSeriesPredictor, _ = autogluon_timeseries_classes()
+        train_data = time_series_data_frame(history, self.frequency, target_col, time_col, include_target=True)
+        reset_path(self.path)
+        predictor = TimeSeriesPredictor(
+            target=TIME_SERIES_TARGET,
+            known_covariates_names=time_series_known_covariates(self.frequency),
+            prediction_length=self.prediction_length,
+            freq=time_series_frequency(self.frequency),
+            eval_metric="RMSE",
+            path=str(self.path),
+            verbosity=self.verbosity,
+        )
+        fit_kwargs: dict[str, Any] = {
+            "train_data": train_data,
+            "presets": self.presets,
+            "random_seed": RANDOM_STATE,
+        }
+        if self.time_limit > 0:
+            fit_kwargs["time_limit"] = self.time_limit
+        predictor.fit(**fit_kwargs)
+        self.predictor = predictor
+        return self
+
+    def predict_horizon(
+        self,
+        history: pd.DataFrame,
+        future: pd.DataFrame,
+        target_col: str,
+        time_col: str,
+    ) -> np.ndarray:
+        if self.predictor is None:
+            TimeSeriesPredictor, _ = autogluon_timeseries_classes()
+            self.predictor = TimeSeriesPredictor.load(str(self.path))
+        history_data = time_series_data_frame(history, self.frequency, target_col, time_col, include_target=True)
+        known_covariates = time_series_data_frame(future, self.frequency, target_col, time_col, include_target=False)
+        predictions = self.predictor.predict(history_data, known_covariates=known_covariates)
+        return align_time_series_predictions(predictions, future, time_col)
+
+    def copy_to(self, destination: Path) -> None:
+        if self.path.resolve() == destination.resolve():
+            return
+        reset_path(destination)
+        shutil.copytree(self.path, destination)
+
+
+def autogluon_time_limit(frequency: str) -> int:
+    if frequency == "half_hourly":
+        return int(os.environ.get("GROUP5_AUTOGLUON_HALF_HOURLY_TIME_LIMIT", "300"))
+    if frequency == "daily":
+        return int(os.environ.get("GROUP5_AUTOGLUON_DAILY_TIME_LIMIT", "120"))
+    raise ValueError(f"Unsupported frequency: {frequency}")
+
+
+def autogluon_timeseries_time_limit(frequency: str) -> int:
+    if frequency == "half_hourly":
+        return int(os.environ.get("GROUP5_AUTOGLUON_TS_HALF_HOURLY_TIME_LIMIT", "300"))
+    if frequency == "daily":
+        return int(os.environ.get("GROUP5_AUTOGLUON_TS_DAILY_TIME_LIMIT", "120"))
+    raise ValueError(f"Unsupported frequency: {frequency}")
+
+
+def autogluon_predictor_class() -> Any:
+    try:
+        from autogluon.tabular import TabularPredictor
+    except ImportError as exc:
+        raise ImportError(
+            "AutoGluon is required for the 'autogluon' model. "
+            "Install dependencies with `EI-climat/bin/pip install -r requirements.txt`."
+        ) from exc
+    return TabularPredictor
+
+
+def autogluon_timeseries_classes() -> tuple[Any, Any]:
+    try:
+        from autogluon.timeseries import TimeSeriesDataFrame, TimeSeriesPredictor
+    except ImportError as exc:
+        raise ImportError(
+            "AutoGluon TimeSeries is required for the 'autogluon_timeseries' model. "
+            "Install dependencies with `EI-climat/bin/pip install -r requirements.txt`."
+        ) from exc
+    return TimeSeriesPredictor, TimeSeriesDataFrame
+
+
+def time_series_known_covariates(frequency: str) -> list[str]:
+    if frequency == "half_hourly":
+        return HALF_TIME_SERIES_KNOWN_COVARIATES
+    if frequency == "daily":
+        return DAILY_TIME_SERIES_KNOWN_COVARIATES
+    raise ValueError(f"Unsupported frequency: {frequency}")
+
+
+def time_series_frequency(frequency: str) -> str:
+    if frequency == "half_hourly":
+        return "30min"
+    if frequency == "daily":
+        return "D"
+    raise ValueError(f"Unsupported frequency: {frequency}")
+
+
+def time_series_data_frame(
+    df: pd.DataFrame,
+    frequency: str,
+    target_col: str,
+    time_col: str,
+    include_target: bool,
+) -> Any:
+    _, TimeSeriesDataFrame = autogluon_timeseries_classes()
+    known_covariates = time_series_known_covariates(frequency)
+    out = df[["Acorn", time_col]].copy()
+    for col in known_covariates:
+        out[col] = df[col] if col in df.columns else np.nan
+    if include_target:
+        out[target_col] = df[target_col]
+    out = out.rename(columns={"Acorn": TIME_SERIES_ID, time_col: TIME_SERIES_TIMESTAMP, target_col: TIME_SERIES_TARGET})
+    out[TIME_SERIES_TIMESTAMP] = pd.to_datetime(out[TIME_SERIES_TIMESTAMP])
+    if frequency == "daily":
+        out[TIME_SERIES_TIMESTAMP] = out[TIME_SERIES_TIMESTAMP].dt.normalize()
+    for col in known_covariates:
+        out[col] = pd.to_numeric(out[col], errors="coerce")
+        out[col] = out.groupby(TIME_SERIES_ID)[col].transform(lambda series: series.ffill().bfill())
+        median = out[col].median()
+        out[col] = out[col].fillna(0.0 if pd.isna(median) else median)
+    if include_target:
+        out[TIME_SERIES_TARGET] = pd.to_numeric(out[TIME_SERIES_TARGET], errors="coerce")
+    out = out.sort_values([TIME_SERIES_ID, TIME_SERIES_TIMESTAMP])
+    return TimeSeriesDataFrame.from_data_frame(out, id_column=TIME_SERIES_ID, timestamp_column=TIME_SERIES_TIMESTAMP)
+
+
+def align_time_series_predictions(predictions: Any, expected: pd.DataFrame, time_col: str) -> np.ndarray:
+    prediction_df = predictions.reset_index().rename(
+        columns={TIME_SERIES_ID: "Acorn", TIME_SERIES_TIMESTAMP: time_col, "mean": "prediction"}
+    )
+    prediction_df[time_col] = pd.to_datetime(prediction_df[time_col])
+    expected_keys = expected[["Acorn", time_col]].copy()
+    expected_keys[time_col] = pd.to_datetime(expected_keys[time_col])
+    if time_col == "Date":
+        prediction_df[time_col] = prediction_df[time_col].dt.normalize()
+        expected_keys[time_col] = expected_keys[time_col].dt.normalize()
+    merged = expected_keys.merge(prediction_df[["Acorn", time_col, "prediction"]], on=["Acorn", time_col], how="left")
+    if merged["prediction"].isna().any():
+        missing = int(merged["prediction"].isna().sum())
+        raise ValueError(f"AutoGluon TimeSeries prediction alignment failed for {missing} rows.")
+    return merged["prediction"].to_numpy()
+
+
+def forecast_horizon_length(df: pd.DataFrame, time_col: str) -> int:
+    counts = df.groupby("Acorn")[time_col].count()
+    if counts.empty or counts.nunique() != 1:
+        raise ValueError("Forecast horizon must contain the same number of timestamps for each ACORN segment.")
+    return int(counts.iloc[0])
+
+
+def make_model(
+    model_name: str,
+    frequency: str,
+    model_path: Path | None = None,
+    prediction_length: int | None = None,
+) -> Any:
     if model_name == "gradient_boosting":
         return make_tree_model(frequency)
     if model_name == "ridge":
         return make_linear_model(frequency)
+    if model_name == AUTOGLUON_TABULAR_MODEL:
+        return AutoGluonTabularModel(
+            frequency=frequency,
+            path=model_path or model_storage_path(frequency, model_name, selected=False),
+        )
+    if model_name == AUTOGLUON_TIMESERIES_MODEL:
+        if prediction_length is None:
+            raise ValueError("AutoGluon TimeSeries requires an explicit prediction_length.")
+        return AutoGluonTimeSeriesModel(
+            frequency=frequency,
+            path=model_path or model_storage_path(frequency, model_name, selected=False),
+            prediction_length=prediction_length,
+        )
     raise ValueError(f"Unsupported trainable model: {model_name}")
 
 
@@ -688,19 +1039,29 @@ def fit_and_evaluate(
     if train.empty or valid.empty:
         raise ValueError(f"Invalid validation split for {frequency}.")
 
-    tree_model = make_tree_model(frequency)
-    linear_model = make_linear_model(frequency)
-    tree_model.fit(feature_matrix(train, frequency), train[target_col])
-    linear_model.fit(feature_matrix(train, frequency), train[target_col])
-
     valid_predictions = valid[["Acorn", time_col, target_col]].copy()
     valid_predictions = add_baseline_predictions(train, valid_predictions, valid, frequency, target_col)
-    valid_predictions["ridge"] = clip_predictions(
-        linear_model.predict(feature_matrix(valid, frequency))
-    )
-    valid_predictions["gradient_boosting"] = clip_predictions(
-        tree_model.predict(feature_matrix(valid, frequency))
-    )
+
+    train_x = feature_matrix(train, frequency)
+    valid_x = feature_matrix(valid, frequency)
+    for model_name in TRAINABLE_MODEL_NAMES:
+        if model_name == AUTOGLUON_TIMESERIES_MODEL:
+            model = make_model(
+                model_name,
+                frequency,
+                autogluon_validation_path(frequency, model_name),
+                prediction_length=forecast_horizon_length(valid, time_col),
+            )
+            model.fit_history(train, target_col, time_col)
+            valid_predictions[model_name] = clip_predictions(
+                model.predict_horizon(train, valid, target_col, time_col)
+            )
+            continue
+        model_path = autogluon_validation_path(frequency, model_name) if model_name == AUTOGLUON_TABULAR_MODEL else None
+        model = make_model(model_name, frequency, model_path)
+        model.fit(train_x, train[target_col])
+        valid_predictions[model_name] = clip_predictions(model.predict(valid_x))
+
     valid_predictions = valid_predictions.rename(columns={target_col: "actual", time_col: "timestamp"})
     valid_predictions.insert(0, "frequency", frequency)
 
@@ -745,13 +1106,7 @@ def add_baseline_predictions(
 
 
 def validation_metrics(valid_predictions: pd.DataFrame) -> pd.DataFrame:
-    prediction_cols = [
-        "previous_day",
-        "previous_week",
-        "seasonal_mean",
-        "ridge",
-        "gradient_boosting",
-    ]
+    prediction_cols = [*BASELINE_MODEL_NAMES, *TRAINABLE_MODEL_NAMES]
     rows = []
     for model in prediction_cols:
         rows.append(metric_record(valid_predictions, model, "ALL"))
@@ -789,8 +1144,53 @@ def clip_predictions(values: Iterable[float]) -> np.ndarray:
     return np.maximum(np.asarray(values, dtype=float), 0.0)
 
 
+def fit_final_model(
+    model_name: str,
+    frequency: str,
+    history: pd.DataFrame,
+    future: pd.DataFrame,
+    target_col: str,
+    time_col: str,
+) -> Any:
+    model_path = model_storage_path(frequency, model_name, selected=True)
+    if model_name == AUTOGLUON_TIMESERIES_MODEL:
+        model = make_model(
+            model_name,
+            frequency,
+            model_path,
+            prediction_length=forecast_horizon_length(future, time_col),
+        )
+        model.fit_history(history, target_col, time_col)
+        return model
+    model = make_model(model_name, frequency, model_path)
+    model.fit(feature_matrix(history, frequency), history[target_col])
+    return model
+
+
+def forecast_with_model(
+    model: Any,
+    model_name: str,
+    history: pd.DataFrame,
+    future: pd.DataFrame,
+    frequency: str,
+    target_col: str,
+    prediction_col: str,
+    time_col: str,
+) -> pd.DataFrame:
+    if model_name == AUTOGLUON_TIMESERIES_MODEL:
+        future_sorted = future.sort_values(["Acorn", time_col]).copy()
+        out = future_sorted[["Acorn", time_col]].copy()
+        out[prediction_col] = clip_predictions(model.predict_horizon(history, future_sorted, target_col, time_col))
+        if frequency == "half_hourly":
+            out["DateTime"] = pd.to_datetime(out["DateTime"])
+        else:
+            out["Date"] = pd.to_datetime(out["Date"]).dt.normalize()
+        return out.reset_index(drop=True)
+    return recursive_forecast(model, history, future, frequency, target_col, prediction_col, time_col)
+
+
 def recursive_forecast(
-    model: Pipeline,
+    model: Any,
     history: pd.DataFrame,
     future: pd.DataFrame,
     frequency: str,
@@ -887,8 +1287,8 @@ def write_core_outputs(
         "interim_parquet_dir": str(INTERIM_PARQUET_DIR),
         "model_ready_csv_dir": str(MODEL_READY_CSV_DIR),
         "model_ready_parquet_dir": str(MODEL_READY_PARQUET_DIR),
-        "short_term_model_path": str(SHORT_TERM_MODEL_DIR / "group5_half_hourly_selected.joblib"),
-        "medium_term_model_path": str(MEDIUM_TERM_MODEL_DIR / "group5_daily_selected.joblib"),
+        "short_term_model_path": str(model_storage_path("half_hourly", half_model_name, selected=True)),
+        "medium_term_model_path": str(model_storage_path("daily", daily_model_name, selected=True)),
         "best_half_hourly_overall": best_model(metrics, "half_hourly"),
         "best_daily_overall": best_model(metrics, "daily"),
     }
@@ -1118,6 +1518,8 @@ The compared models are:
 - `seasonal_mean`: historical mean by ACORN and calendar slot.
 - `ridge`: regularized linear regression.
 - `gradient_boosting`: tree-based regression using calendar, weather, holiday, lag, and rolling features.
+- `autogluon`: AutoGluon TabularPredictor AutoML regression on the same engineered feature table.
+- `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using the target history plus known future calendar, holiday, and weather covariates.
 
 Overall validation RMSE:
 
@@ -1188,5 +1590,6 @@ def validate_outputs(half_predictions: pd.DataFrame, daily_predictions: pd.DataF
     expected_frequencies = {"half_hourly", "daily"}
     if set(metrics["frequency"].unique()) != expected_frequencies:
         raise ValueError("Validation metrics are missing a frequency.")
-    if metrics[(metrics["acorn"] == "ALL") & (metrics["model"] == "gradient_boosting")].empty:
-        raise ValueError("Validation metrics are missing the main model.")
+    for model_name in TRAINABLE_MODEL_NAMES:
+        if metrics[(metrics["acorn"] == "ALL") & (metrics["model"] == model_name)].empty:
+            raise ValueError(f"Validation metrics are missing the {model_name} model.")
