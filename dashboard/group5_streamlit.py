@@ -76,7 +76,7 @@ def main() -> None:
         daily_rmse = best.loc[best["frequency"] == "daily", "rmse"].iloc[0]
         cols[2].metric("Best 48h RMSE", f"{half_rmse:.4f}")
         cols[3].metric("Best daily RMSE", f"{daily_rmse:.4f}")
-        st.dataframe(best[["frequency", "model", "rmse", "n"]], use_container_width=True)
+        st.dataframe(best[["frequency", "model", "rmse", "n"]], width='stretch')
 
         figure_cols = st.columns(2)
         figure_cols[0].image(str(FIGURES_DIR / "01_daily_consumption_trend.png"))
@@ -93,7 +93,7 @@ def main() -> None:
             color_discrete_map=PALETTE,
             title="Historical Daily Consumption",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
         left, right = st.columns(2)
         half_profile = data["half_profile"][data["half_profile"]["Acorn"].isin(selected_acorns)].copy()
@@ -107,7 +107,7 @@ def main() -> None:
                 color_discrete_map=PALETTE,
                 title="Typical Half-Hourly Profile",
             ),
-            use_container_width=True,
+            width='stretch',
         )
         weekly = data["weekly"][data["weekly"]["Acorn"].isin(selected_acorns)]
         right.plotly_chart(
@@ -120,7 +120,7 @@ def main() -> None:
                 color_discrete_map=PALETTE,
                 title="Weekly Pattern",
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
         left, right = st.columns(2)
@@ -133,7 +133,7 @@ def main() -> None:
                 color_discrete_map=PALETTE,
                 title="Temperature vs Daily Consumption",
             ),
-            use_container_width=True,
+            width='stretch',
         )
         autocorr = data["autocorr"][data["autocorr"]["Acorn"].isin(selected_acorns)]
         right.plotly_chart(
@@ -145,12 +145,12 @@ def main() -> None:
                 color_discrete_map=PALETTE,
                 title="Daily Autocorrelation",
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
     with validation:
         metric_filter = data["metrics"][data["metrics"]["acorn"].isin(["ALL", *selected_acorns])]
-        st.dataframe(metric_filter.sort_values(["frequency", "acorn", "rmse"]), use_container_width=True)
+        st.dataframe(metric_filter.sort_values(["frequency", "acorn", "rmse"]), width='stretch')
         st.plotly_chart(
             px.bar(
                 metric_filter[metric_filter["acorn"] == "ALL"],
@@ -160,7 +160,7 @@ def main() -> None:
                 barmode="group",
                 title="Overall Validation RMSE",
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
         frequency = st.radio("Validation series", ["daily", "half_hourly"], horizontal=True)
@@ -193,7 +193,7 @@ def main() -> None:
                 color_discrete_map=PALETTE,
                 title=f"Validation Actual vs {model_col}",
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
     with forecasts:
@@ -208,7 +208,7 @@ def main() -> None:
                 color_discrete_map=PALETTE,
                 title="48-Hour Half-Hourly Forecast",
             ),
-            use_container_width=True,
+            width='stretch',
         )
         st.plotly_chart(
             px.line(
@@ -219,7 +219,7 @@ def main() -> None:
                 color_discrete_map=PALETTE,
                 title="One-Month Daily Forecast",
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
     with comparison:
@@ -230,7 +230,7 @@ def main() -> None:
             .round(3)
             .reset_index()
         )
-        st.dataframe(daily_summary, use_container_width=True)
+        st.dataframe(daily_summary, width='stretch')
         st.plotly_chart(
             px.bar(
                 daily_summary,
@@ -240,7 +240,7 @@ def main() -> None:
                 color_discrete_map=PALETTE,
                 title="Mean Forecast Daily Consumption by Segment",
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
 
