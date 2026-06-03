@@ -222,3 +222,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AutoGluon models (heavy binaries)
+*autogluon*

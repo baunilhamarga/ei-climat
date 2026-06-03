@@ -270,14 +270,14 @@ Saved models:
 
 | figure | use_in_report |
 | --- | --- |
-| 01_daily_consumption_trend.png | historical daily trend and winter seasonality |
-| 02_half_hourly_profile.png | typical day shape and evening peak |
-| 03_weekly_pattern.png | weekday/weekend behavior |
-| 04_weather_relationship.png | temperature link with consumption |
-| 05_daily_autocorrelation.png | lag choice justification |
-| 06_validation_rmse.png | model comparison |
-| 07_final_half_hourly_forecast.png | short-term forecast output |
-| 08_final_daily_forecast.png | medium-term forecast output |
+| 01_daily_consumption_trend.pdf | historical daily trend and winter seasonality |
+| 02_half_hourly_profile.pdf | typical day shape and evening peak |
+| 03_weekly_pattern.pdf | weekday/weekend behavior |
+| 04_weather_relationship.pdf | temperature link with consumption |
+| 05_daily_autocorrelation.pdf | lag choice justification |
+| 06_validation_rmse.pdf | model comparison |
+| 07_final_half_hourly_forecast.pdf | short-term forecast output |
+| 08_final_daily_forecast.pdf | medium-term forecast output |
 
 ## Dashboard and report artifacts
 

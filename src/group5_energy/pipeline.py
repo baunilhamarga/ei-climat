@@ -1504,7 +1504,7 @@ def generate_figures(
     ax.set_ylabel("kWh")
     ax.legend()
     fig.tight_layout()
-    fig.savefig(FIGURES_DIR / "01_daily_consumption_trend.png", dpi=160)
+    fig.savefig(FIGURES_DIR / "01_daily_consumption_trend.pdf")
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(11, 5))
@@ -1515,7 +1515,7 @@ def generate_figures(
     ax.set_xlabel("Hour of day")
     ax.set_ylabel("Mean consumption")
     fig.tight_layout()
-    fig.savefig(FIGURES_DIR / "02_half_hourly_profile.png", dpi=160)
+    fig.savefig(FIGURES_DIR / "02_half_hourly_profile.pdf")
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(9, 5))
@@ -1525,7 +1525,7 @@ def generate_figures(
     ax.set_xlabel("Weekday (0=Monday)")
     ax.set_ylabel("Mean daily kWh")
     fig.tight_layout()
-    fig.savefig(FIGURES_DIR / "03_weekly_pattern.png", dpi=160)
+    fig.savefig(FIGURES_DIR / "03_weekly_pattern.pdf")
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(9, 5))
@@ -1543,7 +1543,7 @@ def generate_figures(
     ax.set_xlabel("Mean temperature")
     ax.set_ylabel("Daily kWh")
     fig.tight_layout()
-    fig.savefig(FIGURES_DIR / "04_weather_relationship.png", dpi=160)
+    fig.savefig(FIGURES_DIR / "04_weather_relationship.pdf")
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(9, 5))
@@ -1553,7 +1553,7 @@ def generate_figures(
     ax.set_xlabel("Lag in days")
     ax.set_ylabel("Autocorrelation")
     fig.tight_layout()
-    fig.savefig(FIGURES_DIR / "05_daily_autocorrelation.png", dpi=160)
+    fig.savefig(FIGURES_DIR / "05_daily_autocorrelation.pdf")
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -1564,7 +1564,7 @@ def generate_figures(
     ax.set_ylabel("RMSE")
     ax.tick_params(axis="x", rotation=30)
     fig.tight_layout()
-    fig.savefig(FIGURES_DIR / "06_validation_rmse.png", dpi=160)
+    fig.savefig(FIGURES_DIR / "06_validation_rmse.pdf")
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(11, 5))
@@ -1574,7 +1574,7 @@ def generate_figures(
     ax.set_ylabel("Predicted mean consumption")
     ax.legend()
     fig.tight_layout()
-    fig.savefig(FIGURES_DIR / "07_final_half_hourly_forecast.png", dpi=160)
+    fig.savefig(FIGURES_DIR / "07_final_half_hourly_forecast.pdf")
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(11, 5))
@@ -1584,7 +1584,7 @@ def generate_figures(
     ax.set_ylabel("Predicted daily kWh")
     ax.legend()
     fig.tight_layout()
-    fig.savefig(FIGURES_DIR / "08_final_daily_forecast.png", dpi=160)
+    fig.savefig(FIGURES_DIR / "08_final_daily_forecast.pdf")
     plt.close(fig)
 
 
