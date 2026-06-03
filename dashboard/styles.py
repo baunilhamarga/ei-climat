@@ -121,6 +121,131 @@ class StyleManager:
         color: #f3f4f6 !important;
         font-weight: 600 !important;
     }
+
+    /* HeroUI style chips for ACORN selection pills */
+    /* Force the Streamlit column holding the filter to align to the right */
+    div[data-testid="column"]:has(.st-key-acorn_filter),
+    div.element-container:has(.st-key-acorn_filter) {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-end !important;
+        justify-content: flex-end !important;
+        text-align: right !important;
+        width: 100% !important;
+    }
+
+    .st-key-acorn_filter {
+        margin-left: auto !important;
+        margin-right: 0 !important;
+        width: fit-content !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-end !important;
+        justify-content: flex-end !important;
+        text-align: right !important;
+        padding-top: 0.5rem;
+    }
+
+    /* Force pills widget wrappers to layout label and buttons vertically */
+    .st-key-acorn_filter div.stPills,
+    .st-key-acorn_filter div.stButtonGroup {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-end !important;
+        width: 100% !important;
+    }
+
+    /* Force button group itself to align buttons to the right and flow horizontally */
+    .st-key-acorn_filter [role="group"] {
+        margin-left: auto !important;
+        margin-right: 0 !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+    }
+
+    .st-key-acorn_filter [data-testid="stWidgetLabel"] {
+        margin-bottom: 0.35rem !important;
+        margin-left: auto !important;
+        margin-right: 0 !important;
+        text-align: right !important;
+        justify-content: flex-end !important;
+    }
+
+    .st-key-acorn_filter [data-testid="stWidgetLabel"] p {
+        font-size: 0.75rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.075em !important;
+        color: #9ca3af !important;
+        font-weight: 600 !important;
+        margin: 0 !important;
+    }
+
+    /* Common button properties for both active and inactive pills */
+    .st-key-acorn_filter [data-testid="stBaseButton-pillsActive"],
+    .st-key-acorn_filter [data-testid="stBaseButton-pills"] {
+        border-radius: 9999px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        padding: 0.35rem 1rem !important;
+        height: auto !important;
+    }
+
+    /* Hover effect for all buttons */
+    .st-key-acorn_filter [data-testid="stBaseButton-pillsActive"]:hover,
+    .st-key-acorn_filter [data-testid="stBaseButton-pills"]:hover {
+        transform: translateY(-1px);
+    }
+
+    /* Base style for inactive button chips */
+    .st-key-acorn_filter [data-testid="stBaseButton-pills"] {
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        color: #9ca3af !important;
+    }
+
+    /* Style inactive buttons on hover */
+    .st-key-acorn_filter [data-testid="stBaseButton-pills"]:hover {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        color: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.18) !important;
+    }
+
+    /* Add prefix symbols using CSS pseudo-elements with flex-shrink prevention */
+    .st-key-acorn_filter [data-testid="stBaseButton-pills"]::before {
+        content: "+  " !important;
+        font-family: inherit !important;
+        font-weight: 700 !important;
+        display: inline-block !important;
+        flex-shrink: 0 !important;
+        margin-right: 0.35rem !important;
+        color: inherit !important;
+    }
+
+    .st-key-acorn_filter [data-testid="stBaseButton-pillsActive"]::before {
+        content: "✓  " !important;
+        font-family: inherit !important;
+        font-weight: 700 !important;
+        display: inline-block !important;
+        flex-shrink: 0 !important;
+        margin-right: 0.35rem !important;
+        color: #ffffff !important;
+    }
+
+    /* Selected state - Crimson Red for all active pills */
+    .st-key-acorn_filter [data-testid="stBaseButton-pillsActive"] {
+        background-color: #8f3f46 !important;
+        border-color: #c85a64 !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px rgba(143, 63, 70, 0.3) !important;
+    }
+
+    /* Hover glow for active chips */
+    .st-key-acorn_filter [data-testid="stBaseButton-pillsActive"]:hover {
+        filter: brightness(1.1);
+    }
     """
 
     @classmethod

@@ -65,16 +65,19 @@ class ForecastDashboardApp:
                 st.session_state.last_valid_acorns = st.session_state.acorn_filter
 
         # Header layout with Title and the Acorn selector in columns
-        col1, col2 = st.columns([5, 2], vertical_alignment="bottom")
+        col1, col2 = st.columns([4, 3], vertical_alignment="bottom")
         with col1:
             st.title("Group 5 Energy Forecasts")
         with col2:
-            selected_acorns = st.multiselect(
+            selected_acorns = st.pills(
                 "Filter ACORN Segments",
                 acorn_options,
+                selection_mode="multi",
                 key="acorn_filter",
                 on_change=on_acorn_change,
                 format_func=lambda value: f"{value} - {ACORN_GROUPS[value]}",
+                help="Click a chip to toggle selection. At least one segment must remain selected.",
+                label_visibility="visible",
             )
 
         if st.session_state.get("show_acorn_warning", False):
