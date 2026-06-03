@@ -56,6 +56,18 @@ EI-climat/bin/python scripts/group5_validate_outputs.py
 EI-climat/bin/streamlit run dashboard/group5_streamlit.py
 ```
 
+Dependency files are split by use case:
+
+- `requirements.txt`: full local environment for one-command setup.
+- `requirements-dashboard.txt`: lightweight Streamlit dashboard runtime for Render.
+- `requirements-modeling.txt`: direct local preprocessing, notebook, sklearn, and AutoGluon dependencies.
+
+For Render, use this build command:
+
+```bash
+pip install -r requirements-dashboard.txt
+```
+
 The validation command should print:
 
 ```text
@@ -74,10 +86,14 @@ Current run summary from `outputs/group5/metrics/run_summary.json`:
 - Best daily validation RMSE: `0.377257` over `93` validation rows
 - Parquet output is available
 
+AutoGluon Tabular and AutoGluon TimeSeries were added after this run, but the pipeline has not been rerun yet. Current saved metrics and predictions therefore do not include either AutoGluon model unless a later session reruns the pipeline.
+
 Saved selected model paths:
 
 - `models/short_term/group5_half_hourly_selected.joblib`
 - `models/medium_term/group5_daily_selected.joblib`
+
+If either AutoGluon model becomes selected after rerunning, the selected model path will be a directory instead of a `.joblib` file.
 
 ## Important Files
 
@@ -123,6 +139,24 @@ Current production choices:
 - Forward/backward fill categorical weather labels such as `icon`, `summary`, and `precipType`.
 - Keep sklearn imputers in the model pipeline as a fallback.
 - Use chronological validation only. Do not shuffle time series rows.
+
+## AutoGluon Model
+
+The pipeline now includes `autogluon` and `autogluon_timeseries` as trainable models beside `ridge` and `gradient_boosting`.
+
+- Dependency: `autogluon.tabular[catboost,lightgbm,xgboost]==1.5.0`
+- Dependency: `autogluon.timeseries==1.5.0`
+- This was the latest stable AutoGluon release checked for the project.
+- AutoGluon requires compatible ranges for numpy, pandas, scipy, and scikit-learn, reflected in `requirements.txt`.
+- The wrapper uses `TabularPredictor` with `problem_type="regression"` and `eval_metric="root_mean_squared_error"`.
+- Default preset: `GROUP5_AUTOGLUON_PRESETS=medium_quality`
+- Default time limits: `GROUP5_AUTOGLUON_HALF_HOURLY_TIME_LIMIT=300`, `GROUP5_AUTOGLUON_DAILY_TIME_LIMIT=120`
+- Default GPU count: `GROUP5_AUTOGLUON_NUM_GPUS=0`
+- The TimeSeries wrapper uses `TimeSeriesPredictor` with `eval_metric="RMSE"`.
+- TimeSeries default preset: `GROUP5_AUTOGLUON_TS_PRESETS=fast_training`
+- TimeSeries default time limits: `GROUP5_AUTOGLUON_TS_HALF_HOURLY_TIME_LIMIT=300`, `GROUP5_AUTOGLUON_TS_DAILY_TIME_LIMIT=120`
+- TimeSeries uses the target history plus known future calendar, holiday, and weather covariates. It does not use the manual lag/rolling features.
+- Both AutoGluon models should be run only through `scripts/group5_run_pipeline.py` so validation remains chronological and outputs stay in generated folders.
 
 Expected lag missingness remains in model-ready feature files at the start of each ACORN history. This is normal and not a source-data defect.
 
