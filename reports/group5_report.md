@@ -85,6 +85,8 @@ The filled forecast files are available in:
 
 - `outputs/group5/predictions/group_5_half_hourly_predict.csv`
 - `outputs/group5/predictions/group_5_daily_predict.csv`
+- `outputs/group5/predictions/group_5_half_hourly_all_models_predict.csv`
+- `outputs/group5/predictions/group_5_daily_all_models_predict.csv`
 
 Cleaned weather and joined intermediate frames are written to `data/01_interim/group5`. Model-ready feature files are written to `data/02_processed/group5_modeling`. The original client-provided files under `data/00_raw` and the existing `data/02_processed/csv` and `data/02_processed/parquet` template files are treated as read-only inputs.
 

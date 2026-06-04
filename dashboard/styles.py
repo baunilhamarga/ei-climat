@@ -24,7 +24,8 @@ class StyleManager:
         "autogluon_timeseries": "AutoGluon TimeSeries",
         "previous_day": "Baseline: Previous Day",
         "previous_week": "Baseline: Previous Week",
-        "seasonal_mean": "Baseline: Seasonal Mean"
+        "seasonal_mean": "Baseline: Seasonal Mean",
+        "selected": "Selected Model"
     }
 
     CSS = """

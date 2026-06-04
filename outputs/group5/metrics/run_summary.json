@@ -43,5 +43,9 @@
     "model": "xgboost",
     "rmse": 0.3531511196991238,
     "n": 93
-  }
+  },
+  "half_hourly_all_model_rows": 1728,
+  "daily_all_model_rows": 576,
+  "short_term_all_model_prediction_path": "/root/ei-climat/outputs/group5/predictions/group_5_half_hourly_all_models_predict.csv",
+  "medium_term_all_model_prediction_path": "/root/ei-climat/outputs/group5/predictions/group_5_daily_all_models_predict.csv"
 }

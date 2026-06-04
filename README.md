@@ -106,6 +106,8 @@ The deployed dashboard reads saved CSV metrics, predictions, and figures. It sho
 - `models/medium_term/group5_daily_selected.joblib`
 - `outputs/group5/predictions/group_5_half_hourly_predict.csv`
 - `outputs/group5/predictions/group_5_daily_predict.csv`
+- `outputs/group5/predictions/group_5_half_hourly_all_models_predict.csv`
+- `outputs/group5/predictions/group_5_daily_all_models_predict.csv`
 - `outputs/group5/metrics/validation_metrics.csv`
 - `outputs/group5/figures/`
 - `reports/group5_report.md`

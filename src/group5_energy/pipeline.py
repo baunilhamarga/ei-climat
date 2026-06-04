@@ -192,6 +192,8 @@ DAILY_TIME_SERIES_KNOWN_COVARIATES = [
 class PipelineResult:
     half_hourly_predictions: pd.DataFrame
     daily_predictions: pd.DataFrame
+    half_hourly_model_predictions: pd.DataFrame
+    daily_model_predictions: pd.DataFrame
     metrics: pd.DataFrame
     validation_predictions_half_hourly: pd.DataFrame
     validation_predictions_daily: pd.DataFrame
@@ -311,29 +313,33 @@ def run_pipeline(verbose: bool = True) -> PipelineResult:
         )
     with progress.stage("save final and selected model artifacts"):
         save_models(half_models, daily_models, half_model_name, daily_model_name)
-    half_model = half_models[half_model_name]
-    daily_model = daily_models[daily_model_name]
 
-    with progress.stage("generate final forecasts"):
-        half_predictions = forecast_with_model(
-            half_model,
-            half_model_name,
+    with progress.stage("generate final forecasts for every saved model"):
+        half_model_predictions = forecast_all_models(
+            half_models,
             half_features,
             half_future,
             frequency="half_hourly",
             target_col=HALF_TARGET,
             prediction_col="Conso_moy_predict",
             time_col="DateTime",
+            progress=progress,
         )
-        daily_predictions = forecast_with_model(
-            daily_model,
-            daily_model_name,
+        daily_model_predictions = forecast_all_models(
+            daily_models,
             daily_features,
             daily_future,
             frequency="daily",
             target_col=DAILY_TARGET,
             prediction_col="Conso_kWh_predict",
             time_col="Date",
+            progress=progress,
+        )
+        half_predictions = selected_model_predictions(
+            half_model_predictions, half_model_name, "DateTime", "Conso_moy_predict"
+        )
+        daily_predictions = selected_model_predictions(
+            daily_model_predictions, daily_model_name, "Date", "Conso_kWh_predict"
         )
 
     metrics = pd.concat([half_metrics, daily_metrics], ignore_index=True)
@@ -341,6 +347,8 @@ def run_pipeline(verbose: bool = True) -> PipelineResult:
         write_core_outputs(
             half_predictions,
             daily_predictions,
+            half_model_predictions,
+            daily_model_predictions,
             metrics,
             half_valid_predictions,
             daily_valid_predictions,
@@ -355,6 +363,7 @@ def run_pipeline(verbose: bool = True) -> PipelineResult:
         write_report(half_features, daily_features, metrics)
     with progress.stage("validate generated outputs"):
         validate_outputs(half_predictions, daily_predictions, metrics)
+        validate_model_prediction_outputs(half_model_predictions, daily_model_predictions)
 
     progress.log(
         "Pipeline complete. "
@@ -364,6 +373,8 @@ def run_pipeline(verbose: bool = True) -> PipelineResult:
     return PipelineResult(
         half_hourly_predictions=half_predictions,
         daily_predictions=daily_predictions,
+        half_hourly_model_predictions=half_model_predictions,
+        daily_model_predictions=daily_model_predictions,
         metrics=metrics,
         validation_predictions_half_hourly=half_valid_predictions,
         validation_predictions_daily=daily_valid_predictions,
@@ -464,6 +475,12 @@ def configure_warning_filters() -> None:
         message=r"The parameter force_int_remainder_cols is deprecated.*",
         category=FutureWarning,
         module=r"sklearn\.compose\._column_transformer",
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=r"X does not have valid feature names, but LGBMRegressor was fitted with feature names",
+        category=UserWarning,
+        module=r"sklearn\.utils\.validation",
     )
 
 
@@ -1613,6 +1630,73 @@ def forecast_with_model(
     return recursive_forecast(model, history, future, frequency, target_col, prediction_col, time_col)
 
 
+def forecast_all_models(
+    models: dict[str, Any],
+    history: pd.DataFrame,
+    future: pd.DataFrame,
+    frequency: str,
+    target_col: str,
+    prediction_col: str,
+    time_col: str,
+    progress: ProgressLogger | None = None,
+) -> pd.DataFrame:
+    forecasts = []
+    for index, (model_name, model) in enumerate(models.items(), start=1):
+        stage_label = f"{frequency} final forecast {index}/{len(models)}: {model_name}"
+        with progress_stage(progress, stage_label, heartbeat=True):
+            forecast = forecast_with_model(
+                model,
+                model_name,
+                history,
+                future,
+                frequency,
+                target_col,
+                prediction_col,
+                time_col,
+            )
+            forecast.insert(0, "model", model_name)
+            forecasts.append(forecast)
+    if not forecasts:
+        return pd.DataFrame(columns=["model", "Acorn", time_col, prediction_col])
+    return pd.concat(forecasts, ignore_index=True)
+
+
+def selected_model_predictions(
+    model_predictions: pd.DataFrame,
+    model_name: str,
+    time_col: str,
+    prediction_col: str,
+) -> pd.DataFrame:
+    selected = model_predictions[model_predictions["model"] == model_name].copy()
+    if selected.empty:
+        raise ValueError(f"Final predictions are missing selected model {model_name}.")
+    return selected[["Acorn", time_col, prediction_col]].reset_index(drop=True)
+
+
+def load_saved_final_models(
+    frequency: str,
+    future: pd.DataFrame,
+    time_col: str,
+    model_names: Iterable[str] | None = None,
+) -> dict[str, Any]:
+    models = {}
+    for model_name in model_names or active_trainable_model_names():
+        path = model_storage_path(frequency, model_name, selected=False)
+        if not path.exists():
+            continue
+        if model_name == AUTOGLUON_TABULAR_MODEL:
+            models[model_name] = AutoGluonTabularModel(frequency=frequency, path=path)
+        elif model_name == AUTOGLUON_TIMESERIES_MODEL:
+            models[model_name] = AutoGluonTimeSeriesModel(
+                frequency=frequency,
+                path=path,
+                prediction_length=forecast_horizon_length(future, time_col),
+            )
+        else:
+            models[model_name] = joblib.load(path)
+    return models
+
+
 def recursive_forecast(
     model: Any,
     history: pd.DataFrame,
@@ -1674,6 +1758,8 @@ def add_recursive_lags(row: pd.Series, values: pd.Series, timestamp: pd.Timestam
 def write_core_outputs(
     half_predictions: pd.DataFrame,
     daily_predictions: pd.DataFrame,
+    half_model_predictions: pd.DataFrame,
+    daily_model_predictions: pd.DataFrame,
     metrics: pd.DataFrame,
     half_valid_predictions: pd.DataFrame,
     daily_valid_predictions: pd.DataFrame,
@@ -1697,6 +1783,7 @@ def write_core_outputs(
         PREDICTION_DIR / "group_5_daily_predict.csv",
         PREDICTION_DIR / "group_5_daily_predict.parquet",
     )
+    write_all_model_prediction_tables(half_model_predictions, daily_model_predictions)
     write_table(metrics, METRICS_DIR / "validation_metrics.csv")
     write_table(half_valid_predictions, METRICS_DIR / "validation_predictions_half_hourly.csv")
     write_table(daily_valid_predictions, METRICS_DIR / "validation_predictions_daily.csv")
@@ -1704,6 +1791,8 @@ def write_core_outputs(
     summary = {
         "half_hourly_rows": int(len(half_predictions)),
         "daily_rows": int(len(daily_predictions)),
+        "half_hourly_all_model_rows": int(len(half_model_predictions)),
+        "daily_all_model_rows": int(len(daily_model_predictions)),
         "parquet_available": parquet_available(),
         "selected_half_hourly_model": half_model_name,
         "selected_daily_model": daily_model_name,
@@ -1716,10 +1805,35 @@ def write_core_outputs(
         "medium_term_model_path": str(model_storage_path("daily", daily_model_name, selected=True)),
         "short_term_model_paths": final_model_paths("half_hourly"),
         "medium_term_model_paths": final_model_paths("daily"),
+        "short_term_all_model_prediction_path": str(PREDICTION_DIR / "group_5_half_hourly_all_models_predict.csv"),
+        "medium_term_all_model_prediction_path": str(PREDICTION_DIR / "group_5_daily_all_models_predict.csv"),
         "best_half_hourly_overall": best_model(metrics, "half_hourly"),
         "best_daily_overall": best_model(metrics, "daily"),
     }
     (METRICS_DIR / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+
+def write_all_model_prediction_tables(
+    half_model_predictions: pd.DataFrame,
+    daily_model_predictions: pd.DataFrame,
+) -> None:
+    half_csv = half_model_predictions.copy()
+    half_csv["DateTime"] = pd.to_datetime(half_csv["DateTime"]).dt.strftime("%Y-%m-%d %H:%M:%S")
+    daily_csv = daily_model_predictions.copy()
+    daily_csv["Date"] = pd.to_datetime(daily_csv["Date"]).dt.strftime("%Y-%m-%d")
+
+    write_prediction_table(
+        half_csv,
+        half_model_predictions,
+        PREDICTION_DIR / "group_5_half_hourly_all_models_predict.csv",
+        PREDICTION_DIR / "group_5_half_hourly_all_models_predict.parquet",
+    )
+    write_prediction_table(
+        daily_csv,
+        daily_model_predictions,
+        PREDICTION_DIR / "group_5_daily_all_models_predict.csv",
+        PREDICTION_DIR / "group_5_daily_all_models_predict.parquet",
+    )
 
 
 def write_prediction_table(
@@ -1965,6 +2079,8 @@ The filled forecast files are available in:
 
 - `outputs/group5/predictions/group_5_half_hourly_predict.csv`
 - `outputs/group5/predictions/group_5_daily_predict.csv`
+- `outputs/group5/predictions/group_5_half_hourly_all_models_predict.csv`
+- `outputs/group5/predictions/group_5_daily_all_models_predict.csv`
 
 Cleaned weather and joined intermediate frames are written to `data/01_interim/group5`. Model-ready feature files are written to `data/02_processed/group5_modeling`. The original client-provided files under `data/00_raw` and the existing `data/02_processed/csv` and `data/02_processed/parquet` template files are treated as read-only inputs.
 
@@ -1993,6 +2109,49 @@ def markdown_table(df: pd.DataFrame) -> str:
     for row in rows:
         lines.append("| " + " | ".join(str(value) for value in row) + " |")
     return "\n".join(lines)
+
+
+def validate_model_prediction_outputs(
+    half_model_predictions: pd.DataFrame,
+    daily_model_predictions: pd.DataFrame,
+) -> None:
+    expected_models = set(active_trainable_model_names())
+    validate_model_prediction_frame(
+        half_model_predictions,
+        expected_models,
+        time_col="DateTime",
+        prediction_col="Conso_moy_predict",
+        expected_rows_per_model=288,
+        label="Half-hourly",
+    )
+    validate_model_prediction_frame(
+        daily_model_predictions,
+        expected_models,
+        time_col="Date",
+        prediction_col="Conso_kWh_predict",
+        expected_rows_per_model=96,
+        label="Daily",
+    )
+
+
+def validate_model_prediction_frame(
+    predictions: pd.DataFrame,
+    expected_models: set[str],
+    time_col: str,
+    prediction_col: str,
+    expected_rows_per_model: int,
+    label: str,
+) -> None:
+    actual_models = set(predictions["model"].dropna().unique())
+    if actual_models != expected_models:
+        raise ValueError(f"{label} all-model predictions have models {sorted(actual_models)}, expected {sorted(expected_models)}.")
+    expected_rows = expected_rows_per_model * len(expected_models)
+    if len(predictions) != expected_rows:
+        raise ValueError(f"Expected {expected_rows} {label.lower()} all-model predictions, got {len(predictions)}.")
+    if predictions[prediction_col].isna().any():
+        raise ValueError(f"{label} all-model predictions contain missing values.")
+    if predictions.duplicated(["model", "Acorn", time_col]).any():
+        raise ValueError(f"{label} all-model predictions contain duplicate model/ACORN timestamps.")
 
 
 def validate_outputs(half_predictions: pd.DataFrame, daily_predictions: pd.DataFrame, metrics: pd.DataFrame) -> None:
