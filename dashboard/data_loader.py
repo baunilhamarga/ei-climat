@@ -23,11 +23,32 @@ class DataLoader:
             prediction_dir=str(self.prediction_dir),
             metrics_dir=str(self.metrics_dir),
             processed_csv_dir=str(self.processed_csv_dir),
+            cache_token=self._artifact_cache_token(),
         )
+
+    def _artifact_cache_token(self) -> tuple[tuple[str, int], ...]:
+        paths = [
+            *self.prediction_dir.glob("*.csv"),
+            *self.prediction_dir.glob("*.parquet"),
+            *self.metrics_dir.glob("*.csv"),
+            self.metrics_dir / "run_summary.json",
+            self.processed_csv_dir / "group_5_half_hourly_predict.csv",
+            self.processed_csv_dir / "group_5_daily_predict.csv",
+        ]
+        token = []
+        for path in sorted(set(paths)):
+            if path.exists():
+                token.append((str(path.relative_to(self.root_dir)), path.stat().st_mtime_ns))
+        return tuple(token)
 
     @staticmethod
     @st.cache_data
-    def _cached_load(prediction_dir: str, metrics_dir: str, processed_csv_dir: str) -> dict[str, pd.DataFrame]:
+    def _cached_load(
+        prediction_dir: str,
+        metrics_dir: str,
+        processed_csv_dir: str,
+        cache_token: tuple[tuple[str, int], ...],
+    ) -> dict[str, pd.DataFrame]:
         pred_path = Path(prediction_dir)
         metrics_path = Path(metrics_dir)
         processed_path = Path(processed_csv_dir)

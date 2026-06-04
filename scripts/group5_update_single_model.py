@@ -14,7 +14,6 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from group5_energy.config import ACORNS, METRICS_DIR, PREDICTION_DIR
 from group5_energy.pipeline import (
-    AUTOGLUON_MODEL_NAMES,
     AUTOGLUON_TABULAR_MODEL,
     AUTOGLUON_TIMESERIES_MODEL,
     BASELINE_MODEL_NAMES,
@@ -26,9 +25,13 @@ from group5_energy.pipeline import (
     LIGHTGBM_MODEL,
     STACK_REGRESSOR_MODEL,
     XGBOOST_BY_ACORN_MODEL,
+    autogluon_timeseries_validation_horizon,
+    autogluon_timeseries_validation_predictions,
+    autogluon_validation_path,
     best_model,
     clip_predictions,
     feature_matrix,
+    forecast_horizon_length,
     forecast_with_model,
     make_model,
     metric_record,
@@ -50,17 +53,16 @@ TARGETED_TRAINABLE_MODELS = (
     AUTOGLUON_TIMESERIES_MODEL,
 )
 
+AUTOGLUON_MODELS = {AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL}
 MODEL_ORDER = (*BASELINE_MODEL_NAMES, *TARGETED_TRAINABLE_MODELS)
 
 
 def main(model_name: str | None = None) -> None:
     if model_name is None:
-        parser = argparse.ArgumentParser(description="Update one non-AutoGluon model in saved Group 5 artifacts.")
+        parser = argparse.ArgumentParser(description="Update one saved Group 5 model in dashboard artifacts.")
         parser.add_argument("model", choices=TARGETED_TRAINABLE_MODELS)
         args = parser.parse_args()
         model_name = args.model
-    if model_name in AUTOGLUON_MODEL_NAMES:
-        raise ValueError("This fast updater is for sklearn/joblib models. Use the full pipeline for AutoGluon models.")
 
     print(f"Updating {model_name} artifacts only.", flush=True)
     half_result = update_frequency(
@@ -124,9 +126,7 @@ def update_frequency(
         raise ValueError(f"Invalid validation split for {frequency}.")
 
     print(f"[{frequency}] fitting validation {model_name}...", flush=True)
-    validation_model = make_model(model_name, frequency)
-    validation_model.fit(feature_matrix(train, frequency), train[target_col])
-    validation_predictions = clip_predictions(validation_model.predict(feature_matrix(valid, frequency)))
+    validation_predictions = fit_validation_predictions(model_name, frequency, train, valid, target_col, time_col)
     updated_valid = update_validation_predictions(
         model_name=model_name,
         frequency=frequency,
@@ -138,9 +138,7 @@ def update_frequency(
     metric_rows = new_metric_rows(updated_valid, model_name)
 
     print(f"[{frequency}] fitting final {model_name}...", flush=True)
-    final_model = make_model(model_name, frequency)
-    final_model.fit(feature_matrix(history, frequency), history[target_col])
-    joblib.dump(final_model, model_storage_path(frequency, model_name, selected=False))
+    final_model = fit_final_update_model(model_name, frequency, history, future, target_col, time_col)
 
     print(f"[{frequency}] forecasting final horizon...", flush=True)
     forecast = forecast_with_model(
@@ -179,6 +177,59 @@ def update_frequency(
         "all_models": all_models,
         "selected_model": selected_model,
     }
+
+
+def fit_validation_predictions(
+    model_name: str,
+    frequency: str,
+    train: pd.DataFrame,
+    valid: pd.DataFrame,
+    target_col: str,
+    time_col: str,
+) -> pd.Series | list[float]:
+    if model_name == AUTOGLUON_TIMESERIES_MODEL:
+        prediction_length = autogluon_timeseries_validation_horizon(frequency, valid, time_col)
+        model = make_model(
+            model_name,
+            frequency,
+            autogluon_validation_path(frequency, model_name),
+            prediction_length=prediction_length,
+        )
+        model.fit_history(train, target_col, time_col)
+        return clip_predictions(
+            autogluon_timeseries_validation_predictions(model, train, valid, frequency, target_col, time_col)
+        )
+
+    model_path = autogluon_validation_path(frequency, model_name) if model_name == AUTOGLUON_TABULAR_MODEL else None
+    model = make_model(model_name, frequency, model_path)
+    model.fit(feature_matrix(train, frequency), train[target_col])
+    return clip_predictions(model.predict(feature_matrix(valid, frequency)))
+
+
+def fit_final_update_model(
+    model_name: str,
+    frequency: str,
+    history: pd.DataFrame,
+    future: pd.DataFrame,
+    target_col: str,
+    time_col: str,
+):
+    model_path = model_storage_path(frequency, model_name, selected=False)
+    if model_name == AUTOGLUON_TIMESERIES_MODEL:
+        model = make_model(
+            model_name,
+            frequency,
+            model_path,
+            prediction_length=forecast_horizon_length(future, time_col),
+        )
+        model.fit_history(history, target_col, time_col)
+        return model
+
+    model = make_model(model_name, frequency, model_path if model_name == AUTOGLUON_TABULAR_MODEL else None)
+    model.fit(feature_matrix(history, frequency), history[target_col])
+    if model_name not in AUTOGLUON_MODELS:
+        joblib.dump(model, model_path)
+    return model
 
 
 def update_validation_predictions(

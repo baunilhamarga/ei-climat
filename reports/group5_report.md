@@ -46,8 +46,10 @@ The compared models are:
 - `seasonal_mean`: historical mean by ACORN and calendar slot.
 - `ridge`: regularized linear regression.
 - `xgboost`: gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
+- `xgboost_by_acorn`: three isolated XGBoost models, one per ACORN, each trained only on that ACORN history.
 - `catboost`: CatBoost gradient boosting regression on the same engineered feature table.
 - `lightgbm`: LightGBM gradient boosting regression on the same engineered feature table.
+- `stack_regressor`: sklearn StackingRegressor using ridge, XGBoost, and LightGBM base learners with a ridge meta-model.
 - `autogluon`: AutoGluon TabularPredictor AutoML regression on the same engineered feature table.
 - `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using the target history plus known future calendar, holiday, and weather covariates.
 
@@ -55,21 +57,21 @@ Overall validation RMSE:
 
 | frequency | model | acorn | rmse | n |
 | --- | --- | --- | --- | --- |
+| daily | xgboost_by_acorn | ALL | 0.3528 | 93 |
 | daily | xgboost | ALL | 0.35315 | 93 |
 | daily | catboost | ALL | 0.35323 | 93 |
-| daily | autogluon | ALL | 0.37297 | 93 |
 | daily | lightgbm | ALL | 0.3745 | 93 |
 | daily | ridge | ALL | 0.37726 | 93 |
+| daily | stack_regressor | ALL | 0.39551 | 93 |
 | daily | previous_day | ALL | 0.48349 | 93 |
 | daily | previous_week | ALL | 0.49415 | 93 |
-| daily | autogluon_timeseries | ALL | 0.55382 | 93 |
 | daily | seasonal_mean | ALL | 1.5379 | 93 |
 | half_hourly | lightgbm | ALL | 0.00737 | 4032 |
-| half_hourly | autogluon | ALL | 0.00749 | 4032 |
+| half_hourly | xgboost_by_acorn | ALL | 0.00795 | 4032 |
 | half_hourly | catboost | ALL | 0.00803 | 4032 |
 | half_hourly | xgboost | ALL | 0.00826 | 4032 |
+| half_hourly | stack_regressor | ALL | 0.00829 | 4032 |
 | half_hourly | ridge | ALL | 0.00993 | 4032 |
-| half_hourly | autogluon_timeseries | ALL | 0.01677 | 4032 |
 | half_hourly | previous_day | ALL | 0.02117 | 4032 |
 | half_hourly | previous_week | ALL | 0.02422 | 4032 |
 | half_hourly | seasonal_mean | ALL | 0.04072 | 4032 |
@@ -77,7 +79,7 @@ Overall validation RMSE:
 Selected final trainable models:
 
 - Half-hourly: `lightgbm` with RMSE `0.00737`.
-- Daily: `xgboost` with RMSE `0.35315`.
+- Daily: `xgboost_by_acorn` with RMSE `0.35280`.
 
 ## Final Outputs
 

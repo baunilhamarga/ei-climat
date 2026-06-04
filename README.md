@@ -56,10 +56,46 @@ Training defaults can be adjusted before running the pipeline with:
 export GROUP5_AUTOGLUON_PRESETS=medium_quality
 export GROUP5_AUTOGLUON_HALF_HOURLY_TIME_LIMIT=300
 export GROUP5_AUTOGLUON_DAILY_TIME_LIMIT=120
-export GROUP5_AUTOGLUON_TS_PRESETS=fast_training
+export GROUP5_AUTOGLUON_TS_PRESETS=medium_quality
 export GROUP5_AUTOGLUON_TS_HALF_HOURLY_TIME_LIMIT=300
 export GROUP5_AUTOGLUON_TS_DAILY_TIME_LIMIT=120
 ```
+
+Native model progress/log output is enabled by default alongside the Group 5 heartbeat messages. To quiet the model libraries and keep only the custom pipeline progress, run with:
+
+```bash
+export GROUP5_NATIVE_MODEL_PROGRESS=0
+```
+
+You can also tune individual libraries:
+
+```bash
+export GROUP5_AUTOGLUON_VERBOSITY=2
+export GROUP5_AUTOGLUON_TS_VERBOSITY=2
+export GROUP5_CATBOOST_VERBOSE=50
+export GROUP5_LIGHTGBM_VERBOSITY=1
+export GROUP5_XGBOOST_VERBOSITY=1
+```
+
+For a mid-effort AutoGluon-only refresh that leaves the already-trained non-AutoGluon models alone and updates the dashboard artifacts, run:
+
+```bash
+GROUP5_AUTOGLUON_PRESETS=high_quality \
+GROUP5_AUTOGLUON_HALF_HOURLY_TIME_LIMIT=900 \
+GROUP5_AUTOGLUON_DAILY_TIME_LIMIT=300 \
+GROUP5_AUTOGLUON_NUM_BAG_FOLDS=5 \
+GROUP5_AUTOGLUON_NUM_STACK_LEVELS=1 \
+GROUP5_AUTOGLUON_DYNAMIC_STACKING=0 \
+GROUP5_AUTOGLUON_VERBOSITY=2 \
+GROUP5_AUTOGLUON_TS_VERBOSITY=2 \
+GROUP5_AUTOGLUON_TS_PRESETS=medium_quality \
+GROUP5_AUTOGLUON_TS_HALF_HOURLY_TIME_LIMIT=900 \
+GROUP5_AUTOGLUON_TS_DAILY_TIME_LIMIT=300 \
+GROUP5_AUTOGLUON_TS_NUM_VAL_WINDOWS=3 \
+EI-climat/bin/python scripts/group5_update_ag_models.py
+```
+
+`autogluon_timeseries` validation uses rolling final-horizon chunks: 96 half-hourly steps for the 48-hour task, and the available daily validation horizon for the daily task. This avoids scoring the half-hourly TimeSeries model on a single 28-day direct forecast when the assignment only asks it to forecast 48 hours. The mid-effort command disables AutoGluon Tabular dynamic stacking (`GROUP5_AUTOGLUON_DYNAMIC_STACKING=0`) because DyStack starts Ray and can emit harmless metrics-exporter errors in this local environment; explicit bagging and one stack level are still enabled.
 
 To run only a subset of trainable models, set:
 
@@ -69,7 +105,7 @@ export GROUP5_TRAINABLE_MODELS=ridge,xgboost,xgboost_by_acorn,catboost,lightgbm,
 
 This is useful on Python environments where AutoGluon is not available. The `xgboost_by_acorn` option trains three isolated XGBoost models, one per ACORN segment, while the regular `xgboost` option trains one pooled model with ACORN as a categorical feature. The `stack_regressor` option uses ridge, XGBoost, and LightGBM base learners with a ridge meta-model.
 
-The TimeSeries model is compared on the same chronological validation subset and the same RMSE metric as the other models. It uses the target history plus known future calendar, holiday, and weather covariates instead of the manual lag/rolling feature table.
+The TimeSeries model is compared on the same chronological validation subset and the same RMSE metric as the other models, but half-hourly validation is rolled in 48-hour chunks to match the operational forecast horizon. It uses the target history plus known future calendar, holiday, and weather covariates instead of the manual lag/rolling feature table.
 
 Validate the generated prediction files:
 

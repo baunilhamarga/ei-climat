@@ -147,7 +147,7 @@ Current production choices:
 
 ## Additional Trainable Models
 
-The pipeline now includes `catboost`, `lightgbm`, `autogluon`, and `autogluon_timeseries` as trainable models beside `ridge` and `xgboost`.
+The pipeline now includes `catboost`, `lightgbm`, `xgboost_by_acorn`, `stack_regressor`, `autogluon`, and `autogluon_timeseries` as trainable models beside `ridge` and pooled `xgboost`.
 
 - Dependency: `catboost==1.2.10`
 - Dependency: `lightgbm==4.6.0`
@@ -160,10 +160,13 @@ The pipeline now includes `catboost`, `lightgbm`, `autogluon`, and `autogluon_ti
 - Default time limits: `GROUP5_AUTOGLUON_HALF_HOURLY_TIME_LIMIT=300`, `GROUP5_AUTOGLUON_DAILY_TIME_LIMIT=120`
 - Default GPU count: `GROUP5_AUTOGLUON_NUM_GPUS=0`
 - The TimeSeries wrapper uses `TimeSeriesPredictor` with `eval_metric="RMSE"`.
-- TimeSeries default preset: `GROUP5_AUTOGLUON_TS_PRESETS=fast_training`
+- TimeSeries default preset: `GROUP5_AUTOGLUON_TS_PRESETS=medium_quality`
 - TimeSeries default time limits: `GROUP5_AUTOGLUON_TS_HALF_HOURLY_TIME_LIMIT=300`, `GROUP5_AUTOGLUON_TS_DAILY_TIME_LIMIT=120`
 - TimeSeries uses the target history plus known future calendar, holiday, and weather covariates. It does not use the manual lag/rolling features.
-- Both AutoGluon models should be run only through `scripts/group5_run_pipeline.py` so validation remains chronological and outputs stay in generated folders.
+- TimeSeries validation uses rolling final-horizon chunks for half-hourly validation instead of one long 28-day direct forecast.
+- To refresh AutoGluon models only and update dashboard artifacts without rerunning the full model suite, use `scripts/group5_update_ag_models.py`.
+- Native model progress/log output is enabled by default via `GROUP5_NATIVE_MODEL_PROGRESS`; set `GROUP5_NATIVE_MODEL_PROGRESS=0` to keep only the Group 5 heartbeat messages.
+- For the mid-effort AutoGluon refresh, prefer `GROUP5_AUTOGLUON_DYNAMIC_STACKING=0` with explicit `GROUP5_AUTOGLUON_NUM_BAG_FOLDS=5` and `GROUP5_AUTOGLUON_NUM_STACK_LEVELS=1`; AutoGluon DyStack starts Ray and may emit harmless metrics-exporter errors locally.
 
 Expected lag missingness remains in model-ready feature files at the start of each ACORN history. This is normal and not a source-data defect.
 

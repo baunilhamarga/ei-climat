@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib-group5")
+os.environ.setdefault("RAY_DISABLE_DOCKER_CPU_WARNING", "1")
+os.environ.setdefault("RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO", "0")
 
 import matplotlib.pyplot as plt
 import joblib
@@ -594,6 +596,82 @@ def nonnegative_int_env(name: str) -> int | None:
     return int_env(name, minimum=0)
 
 
+def bool_env(name: str) -> bool | None:
+    raw_value = os.environ.get(name)
+    if raw_value is None or not raw_value.strip():
+        return None
+    normalized = raw_value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean-like value, got {raw_value!r}.")
+
+
+def native_model_progress_enabled() -> bool:
+    return bool_env("GROUP5_NATIVE_MODEL_PROGRESS") is not False
+
+
+def xgboost_verbosity() -> int:
+    configured = nonnegative_int_env("GROUP5_XGBOOST_VERBOSITY")
+    if configured is not None:
+        return configured
+    return 1 if native_model_progress_enabled() else 0
+
+
+def catboost_verbose() -> bool | int:
+    configured = nonnegative_int_env("GROUP5_CATBOOST_VERBOSE")
+    if configured is not None:
+        return configured
+    return 50 if native_model_progress_enabled() else False
+
+
+def lightgbm_verbosity() -> int:
+    configured = int_env_optional("GROUP5_LIGHTGBM_VERBOSITY")
+    if configured is not None:
+        return configured
+    return 1 if native_model_progress_enabled() else -1
+
+
+def autogluon_verbosity() -> int:
+    configured = nonnegative_int_env("GROUP5_AUTOGLUON_VERBOSITY")
+    if configured is not None:
+        return configured
+    return 2 if native_model_progress_enabled() else 0
+
+
+def autogluon_timeseries_verbosity() -> int:
+    configured = nonnegative_int_env("GROUP5_AUTOGLUON_TS_VERBOSITY")
+    if configured is not None:
+        return configured
+    return 2 if native_model_progress_enabled() else 0
+
+
+def float_env(name: str, minimum: float | None = None, maximum: float | None = None) -> float | None:
+    raw_value = os.environ.get(name)
+    if raw_value is None or not raw_value.strip():
+        return None
+    try:
+        value = float(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number, got {raw_value!r}.") from exc
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{name} must be at least {minimum}, got {value}.")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"{name} must be at most {maximum}, got {value}.")
+    return value
+
+
+def int_env_optional(name: str) -> int | None:
+    raw_value = os.environ.get(name)
+    if raw_value is None or not raw_value.strip():
+        return None
+    try:
+        return int(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer, got {raw_value!r}.") from exc
+
+
 def int_env(name: str, minimum: int) -> int | None:
     raw_value = os.environ.get(name)
     if raw_value is None or not raw_value.strip():
@@ -1127,7 +1205,7 @@ def make_tree_model(frequency: str) -> Pipeline:
                     tree_method="hist",
                     n_jobs=model_cpu_count(),
                     random_state=RANDOM_STATE,
-                    verbosity=0,
+                    verbosity=xgboost_verbosity(),
                 ),
             ),
         ]
@@ -1189,7 +1267,7 @@ def make_catboost_model(frequency: str) -> Pipeline:
                     l2_leaf_reg=3.0,
                     random_seed=RANDOM_STATE,
                     allow_writing_files=False,
-                    verbose=False,
+                    verbose=catboost_verbose(),
                     thread_count=model_cpu_count(),
                 ),
             ),
@@ -1214,7 +1292,7 @@ def make_lightgbm_model(frequency: str) -> Pipeline:
                     reg_lambda=1.0,
                     random_state=RANDOM_STATE,
                     n_jobs=model_cpu_count(),
-                    verbosity=-1,
+                    verbosity=lightgbm_verbosity(),
                 ),
             ),
         ]
@@ -1254,7 +1332,12 @@ class AutoGluonTabularModel:
         self.time_limit = autogluon_time_limit(frequency)
         self.num_cpus = autogluon_cpu_count()
         self.num_gpus = autogluon_gpu_count()
-        self.verbosity = int(os.environ.get("GROUP5_AUTOGLUON_VERBOSITY", "0"))
+        self.num_bag_folds = nonnegative_int_env("GROUP5_AUTOGLUON_NUM_BAG_FOLDS")
+        self.num_stack_levels = nonnegative_int_env("GROUP5_AUTOGLUON_NUM_STACK_LEVELS")
+        self.holdout_frac = float_env("GROUP5_AUTOGLUON_HOLDOUT_FRAC", minimum=0.0, maximum=1.0)
+        self.dynamic_stacking = bool_env("GROUP5_AUTOGLUON_DYNAMIC_STACKING")
+        self.fit_weighted_ensemble = bool_env("GROUP5_AUTOGLUON_FIT_WEIGHTED_ENSEMBLE")
+        self.verbosity = autogluon_verbosity()
 
     def fit(self, x: pd.DataFrame, y: pd.Series) -> "AutoGluonTabularModel":
         TabularPredictor = autogluon_predictor_class()
@@ -1276,6 +1359,16 @@ class AutoGluonTabularModel:
         }
         if self.time_limit > 0:
             fit_kwargs["time_limit"] = self.time_limit
+        if self.num_bag_folds is not None:
+            fit_kwargs["num_bag_folds"] = self.num_bag_folds
+        if self.num_stack_levels is not None:
+            fit_kwargs["num_stack_levels"] = self.num_stack_levels
+        if self.holdout_frac is not None:
+            fit_kwargs["holdout_frac"] = self.holdout_frac
+        if self.dynamic_stacking is not None:
+            fit_kwargs["dynamic_stacking"] = self.dynamic_stacking
+        if self.fit_weighted_ensemble is not None:
+            fit_kwargs["fit_weighted_ensemble"] = self.fit_weighted_ensemble
         predictor.fit(**fit_kwargs)
         self.predictor = predictor
         return self
@@ -1299,9 +1392,13 @@ class AutoGluonTimeSeriesModel:
         self.path = path
         self.prediction_length = prediction_length
         self.predictor = None
-        self.presets = os.environ.get("GROUP5_AUTOGLUON_TS_PRESETS", "fast_training")
+        self.presets = os.environ.get("GROUP5_AUTOGLUON_TS_PRESETS", "medium_quality")
         self.time_limit = autogluon_timeseries_time_limit(frequency)
-        self.verbosity = int(os.environ.get("GROUP5_AUTOGLUON_TS_VERBOSITY", "0"))
+        self.num_val_windows = positive_int_env("GROUP5_AUTOGLUON_TS_NUM_VAL_WINDOWS")
+        self.val_step_size = positive_int_env("GROUP5_AUTOGLUON_TS_VAL_STEP_SIZE")
+        self.refit_full = bool_env("GROUP5_AUTOGLUON_TS_REFIT_FULL")
+        self.enable_ensemble = bool_env("GROUP5_AUTOGLUON_TS_ENABLE_ENSEMBLE")
+        self.verbosity = autogluon_timeseries_verbosity()
 
     def fit_history(self, history: pd.DataFrame, target_col: str, time_col: str) -> "AutoGluonTimeSeriesModel":
         TimeSeriesPredictor, _ = autogluon_timeseries_classes()
@@ -1323,6 +1420,14 @@ class AutoGluonTimeSeriesModel:
         }
         if self.time_limit > 0:
             fit_kwargs["time_limit"] = self.time_limit
+        if self.num_val_windows is not None:
+            fit_kwargs["num_val_windows"] = self.num_val_windows
+        if self.val_step_size is not None:
+            fit_kwargs["val_step_size"] = self.val_step_size
+        if self.refit_full is not None:
+            fit_kwargs["refit_full"] = self.refit_full
+        if self.enable_ensemble is not None:
+            fit_kwargs["enable_ensemble"] = self.enable_ensemble
         predictor.fit(**fit_kwargs)
         self.predictor = predictor
         return self
@@ -1456,6 +1561,67 @@ def forecast_horizon_length(df: pd.DataFrame, time_col: str) -> int:
     return int(counts.iloc[0])
 
 
+def autogluon_timeseries_validation_horizon(frequency: str, valid: pd.DataFrame, time_col: str) -> int:
+    env_name = (
+        "GROUP5_AUTOGLUON_TS_HALF_HOURLY_VALIDATION_HORIZON"
+        if frequency == "half_hourly"
+        else "GROUP5_AUTOGLUON_TS_DAILY_VALIDATION_HORIZON"
+    )
+    per_acorn_count = forecast_horizon_length(valid, time_col)
+    configured = positive_int_env(env_name) or positive_int_env("GROUP5_AUTOGLUON_TS_VALIDATION_HORIZON")
+    default_horizon = 96 if frequency == "half_hourly" else 32
+    horizon = min(configured or default_horizon, per_acorn_count)
+    if per_acorn_count % horizon != 0:
+        horizon = per_acorn_count
+    return horizon
+
+
+def autogluon_timeseries_validation_predictions(
+    model: AutoGluonTimeSeriesModel,
+    train: pd.DataFrame,
+    valid: pd.DataFrame,
+    frequency: str,
+    target_col: str,
+    time_col: str,
+) -> np.ndarray:
+    horizon = model.prediction_length
+    valid_sorted = valid.sort_values(["Acorn", time_col]).copy()
+    valid_sorted["_validation_position"] = valid_sorted.groupby("Acorn").cumcount()
+    per_acorn_count = forecast_horizon_length(valid_sorted, time_col)
+    rolling_history = train.copy()
+    prediction_chunks: list[pd.DataFrame] = []
+
+    for start in range(0, per_acorn_count, horizon):
+        stop = start + horizon
+        chunk = valid_sorted[
+            (valid_sorted["_validation_position"] >= start)
+            & (valid_sorted["_validation_position"] < stop)
+        ].drop(columns="_validation_position")
+        if chunk.empty:
+            continue
+        chunk_predictions = model.predict_horizon(rolling_history, chunk, target_col, time_col)
+        chunk_keys = chunk[["Acorn", time_col]].copy()
+        chunk_keys["prediction"] = chunk_predictions
+        prediction_chunks.append(chunk_keys)
+        rolling_history = pd.concat([rolling_history, chunk], ignore_index=True, sort=False)
+
+    if not prediction_chunks:
+        raise ValueError(f"No AutoGluon TimeSeries validation predictions were produced for {frequency}.")
+
+    predictions = pd.concat(prediction_chunks, ignore_index=True)
+    expected = valid[["Acorn", time_col]].copy()
+    expected[time_col] = pd.to_datetime(expected[time_col])
+    predictions[time_col] = pd.to_datetime(predictions[time_col])
+    if time_col == "Date":
+        expected[time_col] = expected[time_col].dt.normalize()
+        predictions[time_col] = predictions[time_col].dt.normalize()
+    merged = expected.merge(predictions, on=["Acorn", time_col], how="left")
+    if merged["prediction"].isna().any():
+        missing = int(merged["prediction"].isna().sum())
+        raise ValueError(f"AutoGluon TimeSeries rolling validation missed {missing} rows for {frequency}.")
+    return merged["prediction"].to_numpy()
+
+
 def make_model(
     model_name: str,
     frequency: str,
@@ -1523,11 +1689,11 @@ def fit_and_evaluate(
                     model_name,
                     frequency,
                     autogluon_validation_path(frequency, model_name),
-                    prediction_length=forecast_horizon_length(valid, time_col),
+                    prediction_length=autogluon_timeseries_validation_horizon(frequency, valid, time_col),
                 )
                 model.fit_history(train, target_col, time_col)
                 valid_predictions[model_name] = clip_predictions(
-                    model.predict_horizon(train, valid, target_col, time_col)
+                    autogluon_timeseries_validation_predictions(model, train, valid, frequency, target_col, time_col)
                 )
                 continue
             model_path = autogluon_validation_path(frequency, model_name) if model_name == AUTOGLUON_TABULAR_MODEL else None
