@@ -32,20 +32,33 @@ class ValidationTab(BaseTab):
         overall_cols = st.columns(2)
         overall_metrics = metric_filter[metric_filter["acorn"] == "ALL"].copy()
         
+        is_light = (st.session_state.theme_mode == "light")
+        baseline_text_color = "#b93c4b" if is_light else "#ff7675"
+        baselines = {"previous_day", "previous_week", "seasonal_mean"}
+
         # Half-Hourly Chart
         overall_half = overall_metrics[overall_metrics["frequency"] == "half_hourly"].copy()
-        overall_half["model"] = overall_half["model"].map(StyleManager.MODEL_MAP)
+        overall_half["model_type"] = overall_half["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        overall_half["model_display"] = overall_half["model"].map(
+            lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{StyleManager.MODEL_MAP.get(m, m)}</span>'
+            if m in baselines else StyleManager.MODEL_MAP.get(m, m)
+        )
         overall_half = overall_half.sort_values("rmse", ascending=False)
         fig_half = px.bar(
             overall_half,
-            x="model",
+            x="model_display",
             y="rmse",
+            color="model_type",
+            color_discrete_map={
+                "System Baseline": "#c85a64",
+                "Trained Model": "#4da4a9"
+            },
             title="Overall Half-Hourly Validation RMSE",
             labels={
-                "model": "Model",
-                "rmse": "Root Mean Squared Error (RMSE)"
-            },
-            color_discrete_sequence=["#4da4a9"]
+                "model_display": "Model",
+                "rmse": "Root Mean Squared Error (RMSE)",
+                "model_type": "Model Class"
+            }
         )
         fig_half.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_half, st.session_state.theme_mode)
@@ -53,18 +66,27 @@ class ValidationTab(BaseTab):
         
         # Daily Chart
         overall_daily = overall_metrics[overall_metrics["frequency"] == "daily"].copy()
-        overall_daily["model"] = overall_daily["model"].map(StyleManager.MODEL_MAP)
+        overall_daily["model_type"] = overall_daily["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        overall_daily["model_display"] = overall_daily["model"].map(
+            lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{StyleManager.MODEL_MAP.get(m, m)}</span>'
+            if m in baselines else StyleManager.MODEL_MAP.get(m, m)
+        )
         overall_daily = overall_daily.sort_values("rmse", ascending=False)
         fig_daily = px.bar(
             overall_daily,
-            x="model",
+            x="model_display",
             y="rmse",
+            color="model_type",
+            color_discrete_map={
+                "System Baseline": "#c85a64",
+                "Trained Model": "#d49c5e"
+            },
             title="Overall Daily Validation RMSE",
             labels={
-                "model": "Model",
-                "rmse": "Root Mean Squared Error (RMSE)"
-            },
-            color_discrete_sequence=["#d49c5e"]
+                "model_display": "Model",
+                "rmse": "Root Mean Squared Error (RMSE)",
+                "model_type": "Model Class"
+            }
         )
         fig_daily.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_daily, st.session_state.theme_mode)

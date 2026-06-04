@@ -24,9 +24,9 @@ class StyleManager:
         "stack_regressor": "Stack Regressor",
         "autogluon": "AutoGluon Tabular",
         "autogluon_timeseries": "AutoGluon TimeSeries",
-        "previous_day": "Baseline: Previous Day",
-        "previous_week": "Baseline: Previous Week",
-        "seasonal_mean": "Baseline: Seasonal Mean",
+        "previous_day": "Previous Day",
+        "previous_week": "Previous Week",
+        "seasonal_mean": "Seasonal Mean",
         "selected": "Selected Model"
     }
 

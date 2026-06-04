@@ -155,7 +155,7 @@ class ForecastsTab(BaseTab):
         summary = self._test_metric_table(merged, config)
         display_summary = self._format_test_metric_table(summary)
         st.markdown(f'<div class="scrollable-table-wrapper">{display_summary.to_html(index=False)}</div>', unsafe_allow_html=True)
-        self._render_test_rmse_chart(summary)
+        self._render_test_rmse_chart(summary, frequency)
 
     def _render_final_forecast_comparison(
         self,
@@ -290,29 +290,69 @@ class ForecastsTab(BaseTab):
         ].copy()
         if metric_subset.empty:
             return
-        metric_subset["model_label"] = metric_subset["model"].map(self._model_label)
+        
+        is_light = (st.session_state.theme_mode == "light")
+        baseline_text_color = "#b93c4b" if is_light else "#ff7675"
+        baselines = {"previous_day", "previous_week", "seasonal_mean"}
+        trained_color = "#4da4a9" if frequency == "half_hourly" else "#d49c5e"
+
+        metric_subset["model_type"] = metric_subset["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        metric_subset["model_display"] = metric_subset["model"].map(
+            lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{self._model_label(m)}</span>'
+            if m in baselines else self._model_label(m)
+        )
+
         fig_rmse = px.bar(
             metric_subset.sort_values("rmse", ascending=False),
-            x="model_label",
+            x="model_display",
             y="rmse",
+            color="model_type",
+            color_discrete_map={
+                "System Baseline": "#c85a64",
+                "Trained Model": trained_color
+            },
             title="Validation RMSE for Displayed Models",
-            labels={"model_label": "Model", "rmse": "Validation RMSE"},
+            labels={
+                "model_display": "Model", 
+                "rmse": "Validation RMSE",
+                "model_type": "Model Class"
+            },
         )
         fig_rmse.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse, st.session_state.theme_mode)
         st.plotly_chart(fig_rmse, width='stretch')
 
-    def _render_test_rmse_chart(self, summary: pd.DataFrame) -> None:
+    def _render_test_rmse_chart(self, summary: pd.DataFrame, frequency: str) -> None:
         if summary.empty:
             return
+        
+        is_light = (st.session_state.theme_mode == "light")
+        baseline_text_color = "#b93c4b" if is_light else "#ff7675"
+        baselines = {"previous_day", "previous_week", "seasonal_mean"}
+        trained_color = "#4da4a9" if frequency == "half_hourly" else "#d49c5e"
+
         chart_df = summary.copy()
-        chart_df["model_label"] = chart_df["model"].map(self._model_label)
+        chart_df["model_type"] = chart_df["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        chart_df["model_display"] = chart_df["model"].map(
+            lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{self._model_label(m)}</span>'
+            if m in baselines else self._model_label(m)
+        )
+
         fig_rmse = px.bar(
             chart_df.sort_values("rmse", ascending=False),
-            x="model_label",
+            x="model_display",
             y="rmse",
+            color="model_type",
+            color_discrete_map={
+                "System Baseline": "#c85a64",
+                "Trained Model": trained_color
+            },
             title="Final Test RMSE for Displayed Models",
-            labels={"model_label": "Model", "rmse": "Test RMSE"},
+            labels={
+                "model_display": "Model", 
+                "rmse": "Test RMSE",
+                "model_type": "Model Class"
+            },
         )
         fig_rmse.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse, st.session_state.theme_mode)

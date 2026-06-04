@@ -86,21 +86,34 @@ class OverviewTab(BaseTab):
         # Interactive Validation RMSE Comparison (separated by frequency for better readability)
         rmse_cols = st.columns(2)
         metric_subset = metrics[metrics["acorn"] == "ALL"].copy()
+        
+        is_light = (st.session_state.theme_mode == "light")
+        baseline_text_color = "#b93c4b" if is_light else "#ff7675"
+        baselines = {"previous_day", "previous_week", "seasonal_mean"}
 
         # Half-Hourly RMSE Chart
         metric_half = metric_subset[metric_subset["frequency"] == "half_hourly"].copy()
-        metric_half["model"] = metric_half["model"].map(StyleManager.MODEL_MAP)
+        metric_half["model_type"] = metric_half["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        metric_half["model_display"] = metric_half["model"].map(
+            lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{StyleManager.MODEL_MAP.get(m, m)}</span>'
+            if m in baselines else StyleManager.MODEL_MAP.get(m, m)
+        )
         metric_half = metric_half.sort_values("rmse", ascending=False)
         fig_rmse_half = px.bar(
             metric_half,
-            x="model",
+            x="model_display",
             y="rmse",
+            color="model_type",
+            color_discrete_map={
+                "System Baseline": "#c85a64",
+                "Trained Model": "#4da4a9"
+            },
             title="Half-Hourly Validation RMSE by model",
             labels={
-                "model": "Model",
-                "rmse": "Root Mean Squared Error (RMSE)"
-            },
-            color_discrete_sequence=["#4da4a9"]
+                "model_display": "Model",
+                "rmse": "Root Mean Squared Error (RMSE)",
+                "model_type": "Model Class"
+            }
         )
         fig_rmse_half.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse_half, st.session_state.theme_mode)
@@ -108,18 +121,27 @@ class OverviewTab(BaseTab):
 
         # Daily RMSE Chart
         metric_daily = metric_subset[metric_subset["frequency"] == "daily"].copy()
-        metric_daily["model"] = metric_daily["model"].map(StyleManager.MODEL_MAP)
+        metric_daily["model_type"] = metric_daily["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        metric_daily["model_display"] = metric_daily["model"].map(
+            lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{StyleManager.MODEL_MAP.get(m, m)}</span>'
+            if m in baselines else StyleManager.MODEL_MAP.get(m, m)
+        )
         metric_daily = metric_daily.sort_values("rmse", ascending=False)
         fig_rmse_daily = px.bar(
             metric_daily,
-            x="model",
+            x="model_display",
             y="rmse",
+            color="model_type",
+            color_discrete_map={
+                "System Baseline": "#c85a64",
+                "Trained Model": "#d49c5e"
+            },
             title="Daily Validation RMSE by model",
             labels={
-                "model": "Model",
-                "rmse": "Root Mean Squared Error (RMSE)"
-            },
-            color_discrete_sequence=["#d49c5e"]
+                "model_display": "Model",
+                "rmse": "Root Mean Squared Error (RMSE)",
+                "model_type": "Model Class"
+            }
         )
         fig_rmse_daily.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse_daily, st.session_state.theme_mode)
