@@ -225,3 +225,7 @@ __marimo__/
 
 # AutoGluon models (heavy binaries)
 *autogluon*
+# Selected model paths become directories when AutoGluon wins; keep the tracked
+# .joblib selected-model files for non-AutoGluon winners.
+models/short_term/group5_half_hourly_selected/
+models/medium_term/group5_daily_selected/
