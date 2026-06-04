@@ -54,7 +54,6 @@ class OverviewTab(BaseTab):
         st.markdown(f'<div class="scrollable-table-wrapper">{display_best.to_html(index=False)}</div>', unsafe_allow_html=True)
 
         st.subheader("Key Visual Trends")
-        figure_cols = st.columns(2)
 
         # 14-day rolling mean daily consumption trend (calculated dynamically)
         daily_enriched = data["daily_enriched"]
@@ -80,26 +79,44 @@ class OverviewTab(BaseTab):
                 }
             )
             StyleManager.style_plotly_chart(fig_trend, st.session_state.theme_mode)
-            figure_cols[0].plotly_chart(fig_trend, width='stretch')
+            st.plotly_chart(fig_trend, width='stretch')
         else:
-            figure_cols[0].warning("No data selected to display trend.")
+            st.warning("No data selected to display trend.")
 
-        # Interactive Validation RMSE Comparison
+        # Interactive Validation RMSE Comparison (separated by frequency for better readability)
+        rmse_cols = st.columns(2)
         metric_subset = metrics[metrics["acorn"] == "ALL"].copy()
-        metric_subset["frequency"] = metric_subset["frequency"].map(StyleManager.FREQUENCY_MAP)
-        metric_subset["model"] = metric_subset["model"].map(StyleManager.MODEL_MAP)
-        fig_rmse = px.bar(
-            metric_subset,
+
+        # Half-Hourly RMSE Chart
+        metric_half = metric_subset[metric_subset["frequency"] == "half_hourly"].copy()
+        metric_half["model"] = metric_half["model"].map(StyleManager.MODEL_MAP)
+        fig_rmse_half = px.bar(
+            metric_half,
             x="model",
             y="rmse",
-            color="frequency",
-            barmode="group",
-            title="Validation RMSE by model",
+            title="Half-Hourly Validation RMSE by model",
             labels={
                 "model": "Model",
-                "rmse": "Root Mean Squared Error (RMSE)",
-                "frequency": "Forecast Frequency"
-            }
+                "rmse": "Root Mean Squared Error (RMSE)"
+            },
+            color_discrete_sequence=["#4da4a9"]
         )
-        StyleManager.style_plotly_chart(fig_rmse, st.session_state.theme_mode)
-        figure_cols[1].plotly_chart(fig_rmse, width='stretch')
+        StyleManager.style_plotly_chart(fig_rmse_half, st.session_state.theme_mode)
+        rmse_cols[0].plotly_chart(fig_rmse_half, width='stretch')
+
+        # Daily RMSE Chart
+        metric_daily = metric_subset[metric_subset["frequency"] == "daily"].copy()
+        metric_daily["model"] = metric_daily["model"].map(StyleManager.MODEL_MAP)
+        fig_rmse_daily = px.bar(
+            metric_daily,
+            x="model",
+            y="rmse",
+            title="Daily Validation RMSE by model",
+            labels={
+                "model": "Model",
+                "rmse": "Root Mean Squared Error (RMSE)"
+            },
+            color_discrete_sequence=["#d49c5e"]
+        )
+        StyleManager.style_plotly_chart(fig_rmse_daily, st.session_state.theme_mode)
+        rmse_cols[1].plotly_chart(fig_rmse_daily, width='stretch')

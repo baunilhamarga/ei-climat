@@ -29,25 +29,42 @@ class ValidationTab(BaseTab):
         st.markdown(f'<div class="scrollable-table-wrapper">{display_metrics.to_html(index=False)}</div>', unsafe_allow_html=True)
         
         st.subheader("Overall Performance (All ACORN Segments)")
+        overall_cols = st.columns(2)
         overall_metrics = metric_filter[metric_filter["acorn"] == "ALL"].copy()
-        overall_metrics["frequency"] = overall_metrics["frequency"].map(StyleManager.FREQUENCY_MAP)
-        overall_metrics["model"] = overall_metrics["model"].map(StyleManager.MODEL_MAP)
         
-        fig_bar = px.bar(
-            overall_metrics,
+        # Half-Hourly Chart
+        overall_half = overall_metrics[overall_metrics["frequency"] == "half_hourly"].copy()
+        overall_half["model"] = overall_half["model"].map(StyleManager.MODEL_MAP)
+        fig_half = px.bar(
+            overall_half,
             x="model",
             y="rmse",
-            color="frequency",
-            barmode="group",
-            title="Overall Validation RMSE",
+            title="Overall Half-Hourly Validation RMSE",
             labels={
                 "model": "Model",
-                "rmse": "Root Mean Squared Error (RMSE)",
-                "frequency": "Forecast Frequency"
-            }
+                "rmse": "Root Mean Squared Error (RMSE)"
+            },
+            color_discrete_sequence=["#4da4a9"]
         )
-        StyleManager.style_plotly_chart(fig_bar, st.session_state.theme_mode)
-        st.plotly_chart(fig_bar, width='stretch')
+        StyleManager.style_plotly_chart(fig_half, st.session_state.theme_mode)
+        overall_cols[0].plotly_chart(fig_half, width='stretch')
+        
+        # Daily Chart
+        overall_daily = overall_metrics[overall_metrics["frequency"] == "daily"].copy()
+        overall_daily["model"] = overall_daily["model"].map(StyleManager.MODEL_MAP)
+        fig_daily = px.bar(
+            overall_daily,
+            x="model",
+            y="rmse",
+            title="Overall Daily Validation RMSE",
+            labels={
+                "model": "Model",
+                "rmse": "Root Mean Squared Error (RMSE)"
+            },
+            color_discrete_sequence=["#d49c5e"]
+        )
+        StyleManager.style_plotly_chart(fig_daily, st.session_state.theme_mode)
+        overall_cols[1].plotly_chart(fig_daily, width='stretch')
 
         st.subheader("Interactive Predictions Comparison")
         frequency = st.radio(
