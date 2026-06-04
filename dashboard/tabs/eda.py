@@ -197,6 +197,7 @@ class EDATab(BaseTab):
         st.plotly_chart(fig_autocorr, width='stretch', theme=None)
 
         self._render_acorn_comparison(data, selected_acorns, filtered_daily)
+        self._render_model_feature_rationale()
 
     def _render_acorn_comparison(
         self,
@@ -274,3 +275,126 @@ class EDATab(BaseTab):
             fig_bar.update_xaxes(categoryorder="total descending")
             StyleManager.style_plotly_chart(fig_bar, st.session_state.theme_mode)
             st.plotly_chart(fig_bar, width="stretch", theme=None)
+
+
+    def _render_model_feature_rationale(self) -> None:
+        st.subheader("Model Feature Set and Rationale")
+        st.markdown(
+            "The forecasting models are not trained directly on raw timestamps alone. The pipeline turns the "
+            "historical consumption, ACORN segment, calendar, holiday, weather, and recent-consumption "
+            "history into model-ready feature tables. Numeric columns are median-imputed when needed; "
+            "categorical columns are filled with `missing` and one-hot encoded for the sklearn-style models. "
+            "AutoGluon Tabular receives the same tabular feature columns."
+        )
+
+        tabular_rows = [
+            {
+                "Frequency": "Half-hourly",
+                "Feature group": "Segment and scale",
+                "Columns": "Acorn, Acorn_grouped, nb_clients",
+                "Rationale": "ACORN identifies the customer segment and nb_clients controls for changes in the number of households represented by the segment average.",
+            },
+            {
+                "Frequency": "Half-hourly",
+                "Feature group": "Calendar rhythm",
+                "Columns": "hour, minute, half_hour_slot, weekday, is_weekend, month, dayofyear, weekofyear",
+                "Rationale": "Electricity demand has strong time-of-day, weekday-weekend, weekly, and seasonal patterns.",
+            },
+            {
+                "Frequency": "Half-hourly",
+                "Feature group": "Holiday",
+                "Columns": "is_holiday",
+                "Rationale": "Bank holidays can shift occupancy and therefore the daily load profile.",
+            },
+            {
+                "Frequency": "Half-hourly",
+                "Feature group": "Weather",
+                "Columns": "temperature, temperature_half_hour, apparentTemperature, dewPoint, humidity, windSpeed, pressure, visibility, windBearing, icon, precipType",
+                "Rationale": "Weather affects heating needs and behaviour. Temperature-like fields capture thermal demand, while humidity, wind, pressure, visibility, and weather labels add context on conditions.",
+            },
+            {
+                "Frequency": "Half-hourly",
+                "Feature group": "Recent target history",
+                "Columns": "lag_1, lag_2, lag_48, lag_336, rolling_48_mean, rolling_336_mean",
+                "Rationale": "The latest half-hours, the same slot yesterday, the same slot last week, and recent rolling averages capture persistence and weekly repetition.",
+            },
+            {
+                "Frequency": "Daily",
+                "Feature group": "Segment and scale",
+                "Columns": "Acorn, nb_clients",
+                "Rationale": "ACORN separates the three socioeconomic groups, while nb_clients keeps the target comparable when the segment sample size changes.",
+            },
+            {
+                "Frequency": "Daily",
+                "Feature group": "Calendar rhythm",
+                "Columns": "weekday, is_weekend, month, dayofyear, weekofyear",
+                "Rationale": "Daily consumption varies by weekday, weekend, week of year, and broader winter seasonality.",
+            },
+            {
+                "Frequency": "Daily",
+                "Feature group": "Holiday",
+                "Columns": "is_holiday",
+                "Rationale": "Public holidays can behave differently from ordinary weekdays and weekends.",
+            },
+            {
+                "Frequency": "Daily",
+                "Feature group": "Weather",
+                "Columns": "temperatureMax, temperatureMin, temperatureHigh, temperatureLow, temperatureMean, temperatureRange, apparentTemperatureMax, apparentTemperatureMin, humidity, windSpeed, cloudCover, pressure, visibility, uvIndex, moonPhase, icon, precipType",
+                "Rationale": "Daily weather aggregates explain changes in total daily demand, especially through temperature and apparent-temperature variables related to heating needs.",
+            },
+            {
+                "Frequency": "Daily",
+                "Feature group": "Recent target history",
+                "Columns": "lag_1, lag_7, lag_14, rolling_7_mean, rolling_28_mean",
+                "Rationale": "Yesterday, last week, two weeks ago, and recent rolling means summarize persistence, weekly recurrence, and short-term trend.",
+            },
+        ]
+        tabular_df = pd.DataFrame(tabular_rows)
+        st.markdown(
+            f'<div class="scrollable-table-wrapper">{tabular_df.to_html(index=False)}</div>',
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            "AutoGluon TimeSeries is handled separately. It receives each ACORN as an item series, the "
+            "historical target sequence, and known future numeric covariates. It does not receive the manual "
+            "lag or rolling columns because the time-series models build their own sequence representation from "
+            "the target history."
+        )
+        ts_rows = [
+            {
+                "Frequency": "Half-hourly",
+                "Input type": "Target history",
+                "Columns": "Acorn as item id, DateTime as timestamp, Conso_moy as target",
+                "Rationale": "The model learns persistence, daily shape, and weekly repetition from the ordered consumption sequence.",
+            },
+            {
+                "Frequency": "Half-hourly",
+                "Input type": "Known future covariates",
+                "Columns": "nb_clients, hour, minute, half_hour_slot, weekday, is_weekend, month, dayofyear, weekofyear, is_holiday, temperature, temperature_half_hour, apparentTemperature, dewPoint, humidity, windSpeed, pressure, visibility, windBearing",
+                "Rationale": "These values are available for the forecast horizon and help the time-series model adjust its sequence forecast for calendar, holiday, and weather conditions.",
+            },
+            {
+                "Frequency": "Daily",
+                "Input type": "Target history",
+                "Columns": "Acorn as item id, Date as timestamp, Conso_kWh as target",
+                "Rationale": "The model learns segment-specific daily persistence and recurrence from the historical daily series.",
+            },
+            {
+                "Frequency": "Daily",
+                "Input type": "Known future covariates",
+                "Columns": "nb_clients, weekday, is_weekend, month, dayofyear, weekofyear, is_holiday, temperatureMax, temperatureMin, temperatureHigh, temperatureLow, temperatureMean, temperatureRange, apparentTemperatureMax, apparentTemperatureMin, humidity, windSpeed, cloudCover, pressure, visibility, uvIndex, moonPhase",
+                "Rationale": "These known future variables provide calendar and weather context for the one-month daily forecast.",
+            },
+        ]
+        ts_df = pd.DataFrame(ts_rows)
+        st.markdown(
+            f'<div class="scrollable-table-wrapper">{ts_df.to_html(index=False)}</div>',
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            "The simple baselines are included for comparison rather than feature learning: previous-day and "
+            "previous-week baselines reuse the corresponding lag values, while the seasonal mean baseline uses "
+            "the historical average for the same ACORN and calendar slot or weekday."
+        )
