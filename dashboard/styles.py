@@ -46,11 +46,48 @@ class StyleManager:
         transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    /* Force all standard headers, labels, and text containers to inherit theme text and Outfit font */
-    h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p, [data-testid="stWidgetLabel"] p, label, p, span, li, table, th, td {
+    /* Force standard headers, labels, and text containers to inherit theme text and Outfit font */
+    h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p, [data-testid="stWidgetLabel"] p, label, p, li, table, th, td {
         font-family: 'Outfit', sans-serif !important;
         color: var(--theme-text) !important;
         transition: color 0.3s ease;
+    }
+
+    /* Keep Streamlit's built-in Material Symbols icons from rendering as raw text names. */
+    span[data-testid="stIconMaterial"],
+    span[class*="material-symbols"],
+    span[class*="material-icons"],
+    [data-testid="stExpander"] summary span[data-testid="stIconMaterial"],
+    [data-testid="stExpander"] summary span[class*="material"] {
+        font-family: "Material Symbols Rounded", "Material Symbols Outlined", "Material Icons" !important;
+        font-weight: normal !important;
+        font-style: normal !important;
+        font-size: 1.25rem !important;
+        line-height: 1 !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+        white-space: nowrap !important;
+        word-wrap: normal !important;
+        direction: ltr !important;
+        color: var(--theme-text) !important;
+        font-feature-settings: "liga" !important;
+        -webkit-font-feature-settings: "liga" !important;
+        -webkit-font-smoothing: antialiased !important;
+        text-rendering: optimizeLegibility !important;
+    }
+
+    div[data-testid="stExpander"] {
+        background-color: var(--kpi-bg) !important;
+        border: 1px solid var(--kpi-border) !important;
+        border-radius: 8px !important;
+        overflow: hidden !important;
+    }
+
+    div[data-testid="stExpander"] details,
+    div[data-testid="stExpander"] summary {
+        background-color: transparent !important;
+        color: var(--theme-text) !important;
+        font-family: 'Outfit', sans-serif !important;
     }
 
     /* Reduce main container margins to let contents extend closer to the screen edges */

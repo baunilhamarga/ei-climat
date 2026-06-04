@@ -4,6 +4,7 @@ from dashboard.tabs.overview import OverviewTab
 from dashboard.tabs.eda import EDATab
 from dashboard.tabs.validation import ValidationTab
 from dashboard.tabs.forecasts import ForecastsTab
+from dashboard.tabs.carbon import CarbonTab
 from dashboard.tabs.comparison import ComparisonTab
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "EDATab",
     "ValidationTab",
     "ForecastsTab",
+    "CarbonTab",
     "ComparisonTab",
 ]

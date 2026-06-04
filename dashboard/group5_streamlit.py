@@ -16,7 +16,7 @@ from dashboard.data_loader import DataLoader
 # pyrefly: ignore [missing-import]
 from dashboard.styles import StyleManager
 # pyrefly: ignore [missing-import]
-from dashboard.tabs import AboutTab, OverviewTab, EDATab, ValidationTab, ForecastsTab
+from dashboard.tabs import AboutTab, OverviewTab, EDATab, ValidationTab, ForecastsTab, CarbonTab
 
 class ForecastDashboardApp:
     """Central app coordinating Streamlit setup, styling, caching, data-flow, and views."""
@@ -28,11 +28,12 @@ class ForecastDashboardApp:
         
         # Instantiate the modular tab components
         self.tabs = {
-            "About": AboutTab(),
-            "Overview": OverviewTab(self.root_dir),
-            "EDA": EDATab(),
-            "Validation": ValidationTab(),
-            "Forecasts": ForecastsTab(),
+            "ℹ️ About": AboutTab(),
+            "📌 Overview": OverviewTab(self.root_dir),
+            "🔎 EDA": EDATab(),
+            "✅ Validation": ValidationTab(),
+            "📈 Forecasts": ForecastsTab(),
+            "🌱 Carbon Footprint": CarbonTab(),
         }
 
     def run(self) -> None:
