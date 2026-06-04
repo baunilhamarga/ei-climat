@@ -13,8 +13,17 @@ class ForecastsTab(BaseTab):
     def render(self, data: dict[str, pd.DataFrame], selected_acorns: list[str]) -> None:
         half_pred = data["half_pred"][data["half_pred"]["Acorn"].isin(selected_acorns)]
         daily_pred = data["daily_pred"][data["daily_pred"]["Acorn"].isin(selected_acorns)]
+
+        st.markdown(
+            "This tab shows the final forecast deliverables and the saved-model outputs behind them. We "
+            "compare the the model predition with the provided truth values."
+        )
         
         st.subheader("Short-Term Forecast (48 Hours)")
+        st.markdown(
+            "The short-term output predicts average consumption every 30 minutes from 2014-01-13 00:00 "
+            "through 2014-01-14 23:30. This view is useful for checking intraday shape and evening peaks."
+        )
         fig_half = px.line(
             half_pred,
             x="DateTime",
@@ -32,6 +41,11 @@ class ForecastsTab(BaseTab):
         st.plotly_chart(fig_half, width='stretch', theme=None)
 
         st.subheader("Medium-Term Forecast (1 Month)")
+        st.markdown(
+            "The medium-term output predicts total daily consumption from 2014-01-13 through 2014-02-13. "
+            "Because this horizon is longer, recursive lag updates mean earlier predictions can influence "
+            "later forecast features."
+        )
         fig_daily = px.line(
             daily_pred,
             x="Date",
@@ -56,6 +70,12 @@ class ForecastsTab(BaseTab):
         selected_acorns: list[str],
     ) -> None:
         st.subheader("Saved Model Comparison")
+        st.markdown(
+            "The model comparison keeps every saved model's predictions available, not only the selected "
+            "winner. This helps separate three questions: how models performed on the validation holdout, "
+            "what each model predicts for the final horizon, and how final predictions compare with available "
+            "ground truth."
+        )
         view_mode = st.radio(
             "View",
             ["test", "final", "validation"],
@@ -87,6 +107,11 @@ class ForecastsTab(BaseTab):
         frequency: str,
     ) -> None:
         config = self._forecast_config(frequency)
+        st.markdown(
+            "This view joins saved final-horizon predictions with the provided actual values for the same "
+            "dates and ACORN segments. It is the closest check to real final-test performance when those "
+            "actual values are available."
+        )
         actuals = data[config["actual_data_key"]].copy()
         actuals = actuals[actuals["Acorn"].isin(selected_acorns)]
         if actuals.empty:
@@ -164,6 +189,10 @@ class ForecastsTab(BaseTab):
         frequency: str,
     ) -> None:
         config = self._forecast_config(frequency)
+        st.markdown(
+            "This view shows the final assignment-period forecasts produced by each saved model. It does not "
+            "score the models by itself; the RMSE chart below comes from the chronological validation split."
+        )
         model_predictions = data[config["data_key"]]
         filtered = model_predictions[model_predictions["Acorn"].isin(selected_acorns)].copy()
         if filtered.empty:
@@ -216,6 +245,10 @@ class ForecastsTab(BaseTab):
         selected_acorns: list[str],
         frequency: str,
     ) -> None:
+        st.markdown(
+            "This view returns to the chronological validation window, where actual values were held out "
+            "from training. It is the fair model-comparison view used to choose the selected forecasting models."
+        )
         valid = data["daily_valid" if frequency == "daily" else "half_valid"].copy()
         valid = valid[valid["Acorn"].isin(selected_acorns)]
         model_options = self._ordered_models(

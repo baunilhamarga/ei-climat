@@ -12,6 +12,20 @@ class EDATab(BaseTab):
     def render(self, data: dict[str, pd.DataFrame], selected_acorns: list[str]) -> None:
         daily_enriched = data["daily_enriched"]
         filtered_daily = daily_enriched[daily_enriched["Acorn"].isin(selected_acorns)]
+
+        st.markdown(
+            "This tab checks the structure of the consumption data before modeling: long-term level, "
+            "within-day and weekly rhythms, weather sensitivity, autocorrelation, and differences between "
+            "the assigned ACORN segments. These patterns explain why the forecasting models use calendar, "
+            "weather, lag, and rolling features."
+        )
+
+        st.subheader("Historical Consumption Levels")
+        st.markdown(
+            "The historical daily series shows the baseline level of each segment and the seasonal rise in "
+            "winter demand. In this group, ACORN-E is generally the highest-consuming segment, ACORN-F is in "
+            "the middle, and ACORN-Q is lower."
+        )
         
         # Historical Daily Consumption Chart
         fig = px.line(
@@ -29,6 +43,13 @@ class EDATab(BaseTab):
         )
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
         st.plotly_chart(fig, width='stretch', theme=None)
+
+        st.subheader("Daily and Weekly Shape")
+        st.markdown(
+            "The profile charts summarize repeated behaviour rather than individual dates. The half-hourly "
+            "profile captures the typical daily load curve, while the weekly profile shows whether weekday "
+            "and weekend consumption differ by segment."
+        )
 
         # Half-Hourly and Weekly Profiles Side-by-Side
         col1, col2 = st.columns(2)
@@ -84,6 +105,13 @@ class EDATab(BaseTab):
         )
         StyleManager.style_plotly_chart(fig_weekly, st.session_state.theme_mode)
         col2.plotly_chart(fig_weekly, width='stretch', theme=None)
+
+        st.subheader("Weather Relationship")
+        st.markdown(
+            "Electricity demand is strongly linked to temperature in this dataset: colder days tend to "
+            "correspond to higher daily consumption. The scatter plot shows that relationship directly, and "
+            "the correlation matrix checks whether weather, weekend, and holiday variables carry useful signal."
+        )
 
         # Temperature Scatter and Correlation Matrix Side-by-Side
         col3, col4 = st.columns(2)
@@ -143,6 +171,13 @@ class EDATab(BaseTab):
         StyleManager.style_plotly_chart(fig_corr, st.session_state.theme_mode)
         col4.plotly_chart(fig_corr, width='stretch', theme=None)
 
+        st.subheader("Autocorrelation and Lag Evidence")
+        st.markdown(
+            "Autocorrelation measures how much today's consumption resembles previous days. Strong values "
+            "around short lags and weekly lags justify features such as yesterday, last week, and rolling "
+            "averages in the tabular models."
+        )
+
         # Daily Autocorrelation (Full Width)
         autocorr = data["autocorr"][data["autocorr"]["Acorn"].isin(selected_acorns)]
         fig_autocorr = px.line(
@@ -170,6 +205,11 @@ class EDATab(BaseTab):
         filtered_daily: pd.DataFrame,
     ) -> None:
         st.subheader("ACORN Segment Comparison")
+        st.markdown(
+            "This comparison keeps the segment story in the EDA context: historical daily levels show how "
+            "the segments differ in the training data, while the forecast summary shows whether the final "
+            "one-month predictions preserve the same ordering and scale."
+        )
 
         daily_pred = data["daily_pred"][data["daily_pred"]["Acorn"].isin(selected_acorns)].copy()
         if filtered_daily.empty or daily_pred.empty:

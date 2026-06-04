@@ -12,8 +12,19 @@ class ValidationTab(BaseTab):
     
     def render(self, data: dict[str, pd.DataFrame], selected_acorns: list[str]) -> None:
         metric_filter = data["metrics"][data["metrics"]["acorn"].isin(["ALL", *selected_acorns])]
+
+        st.markdown(
+            "Validation is chronological: models train on earlier history and are scored on the later "
+            "holdout period before the final forecast window. RMSE is the main comparison metric, so lower "
+            "values indicate better validation performance."
+        )
         
         st.subheader("Model Metrics Matrix")
+        st.markdown(
+            "The table reports RMSE for each model at the overall level (`ALL`) and for each selected ACORN "
+            "segment. Baseline rows are simple repetition or seasonal averages; trained-model rows show the "
+            "added value of feature engineering and model fitting."
+        )
         display_metrics = metric_filter.sort_values(["frequency", "acorn", "rmse"]).copy()
         display_metrics = display_metrics[["frequency", "acorn", "model", "rmse", "n"]]
         display_metrics["frequency"] = display_metrics["frequency"].map(StyleManager.FREQUENCY_MAP)
@@ -29,6 +40,11 @@ class ValidationTab(BaseTab):
         st.markdown(f'<div class="scrollable-table-wrapper">{display_metrics.to_html(index=False)}</div>', unsafe_allow_html=True)
         
         st.subheader("Overall Performance (All ACORN Segments)")
+        st.markdown(
+            "These charts focus on the aggregate score across all three ACORN segments. They make it easy "
+            "to see whether a model beats the simple baselines and whether the best method changes between "
+            "the half-hourly and daily forecasting tasks."
+        )
         overall_cols = st.columns(2)
         overall_metrics = metric_filter[metric_filter["acorn"] == "ALL"].copy()
         
@@ -92,7 +108,12 @@ class ValidationTab(BaseTab):
         StyleManager.style_plotly_chart(fig_daily, st.session_state.theme_mode)
         overall_cols[1].plotly_chart(fig_daily, width='stretch', theme=None)
 
-        st.subheader("Interactive Predictions Comparison")
+        st.subheader("Actual vs Predicted Validation Series")
+        st.markdown(
+            "The line chart compares the held-out actual consumption with one model's validation prediction. "
+            "Good models should follow both the level and the shape of the actual curve; systematic gaps or "
+            "missed peaks explain why a model's RMSE is higher."
+        )
         frequency = st.radio(
             "Validation series frequency", 
             ["daily", "half_hourly"], 
@@ -102,20 +123,22 @@ class ValidationTab(BaseTab):
         valid = data["daily_valid" if frequency == "daily" else "half_valid"]
         valid = valid[valid["Acorn"].isin(selected_acorns)]
         
-        model_options = [
+        available_models = [
             model
-            for model in [
-                "autogluon_timeseries",
-                "autogluon",
-                "lightgbm",
-                "catboost",
-                "xgboost",
-                "ridge",
-                "seasonal_mean",
-                "previous_week",
-                "previous_day",
+            for model in valid.columns
+            if model not in {"timestamp", "Acorn", "actual"}
+        ]
+        rmse_order = (
+            data["metrics"][
+                (data["metrics"]["frequency"] == frequency)
+                & (data["metrics"]["acorn"] == "ALL")
+                & (data["metrics"]["model"].isin(available_models))
             ]
-            if model in valid.columns
+            .sort_values(["rmse", "model"])["model"]
+            .tolist()
+        )
+        model_options = rmse_order + [
+            model for model in available_models if model not in rmse_order
         ]
         
         if not model_options:
