@@ -16,12 +16,30 @@ class OverviewTab(BaseTab):
 
     def render(self, data: dict[str, pd.DataFrame], selected_acorns: list[str]) -> None:
         metrics = data["metrics"]
-        best = metrics[metrics["acorn"] == "ALL"].sort_values(["frequency", "rmse"]).groupby("frequency").head(1)
+        # Calculate row counts dynamically based on selected ACORN segments
+        half_pred_filtered = data["half_pred"][data["half_pred"]["Acorn"].isin(selected_acorns)]
+        daily_pred_filtered = data["daily_pred"][data["daily_pred"]["Acorn"].isin(selected_acorns)]
+        half_rows = len(half_pred_filtered)
+        daily_rows = len(daily_pred_filtered)
+
+        # Calculate best validation RMSE dynamically for selected ACORN segments
+        metrics_acorns = metrics[metrics["acorn"].isin(selected_acorns)].copy()
+        metrics_acorns["sse"] = metrics_acorns["n"] * (metrics_acorns["rmse"] ** 2)
         
-        half_rmse = best.loc[best["frequency"] == "half_hourly", "rmse"].iloc[0]
-        daily_rmse = best.loc[best["frequency"] == "daily", "rmse"].iloc[0]
-        half_model = best.loc[best["frequency"] == "half_hourly", "model"].iloc[0]
-        daily_model = best.loc[best["frequency"] == "daily", "model"].iloc[0]
+        combined_metrics = metrics_acorns.groupby(["frequency", "model"]).agg(
+            total_sse=("sse", "sum"),
+            total_n=("n", "sum")
+        ).reset_index()
+        
+        combined_metrics["rmse"] = (combined_metrics["total_sse"] / combined_metrics["total_n"]) ** 0.5
+        combined_metrics["n"] = combined_metrics["total_n"]
+        
+        best_combined = combined_metrics.sort_values(["frequency", "rmse"]).groupby("frequency").head(1)
+        
+        half_rmse = best_combined.loc[best_combined["frequency"] == "half_hourly", "rmse"].iloc[0]
+        daily_rmse = best_combined.loc[best_combined["frequency"] == "daily", "rmse"].iloc[0]
+        half_model = best_combined.loc[best_combined["frequency"] == "half_hourly", "model"].iloc[0]
+        daily_model = best_combined.loc[best_combined["frequency"] == "daily", "model"].iloc[0]
 
         # Get human-readable names for KPIs
         nice_half_model = StyleManager.MODEL_MAP.get(half_model, half_model)
@@ -32,8 +50,8 @@ class OverviewTab(BaseTab):
         # Render premium glassmorphic cards
         kpi_html = f"""
         <div class="kpi-container">
-            {StyleManager.render_kpi_card(f"{nice_half_freq} Predict Rows", f"{len(data['half_pred'])}", "Short-term horizon")}
-            {StyleManager.render_kpi_card(f"{nice_daily_freq} Predict Rows", f"{len(data['daily_pred'])}", "Medium-term horizon")}
+            {StyleManager.render_kpi_card(f"{nice_half_freq} Predict Rows", f"{half_rows}", "Short-term horizon")}
+            {StyleManager.render_kpi_card(f"{nice_daily_freq} Predict Rows", f"{daily_rows}", "Medium-term horizon")}
             {StyleManager.render_kpi_card("Best 48h RMSE", f"{half_rmse:.4f}", f"Model: {nice_half_model}")}
             {StyleManager.render_kpi_card("Best Daily RMSE", f"{daily_rmse:.4f}", f"Model: {nice_daily_model}")}
         </div>
@@ -41,10 +59,11 @@ class OverviewTab(BaseTab):
         st.markdown(kpi_html, unsafe_allow_html=True)
 
         st.subheader("Selected Best Performing Models")
-        display_best = best[["frequency", "model", "rmse", "n"]].copy()
+        display_best = best_combined[["frequency", "model", "rmse", "n"]].copy()
         display_best["frequency"] = display_best["frequency"].map(StyleManager.FREQUENCY_MAP)
         display_best["model"] = display_best["model"].map(StyleManager.MODEL_MAP)
         display_best["rmse"] = display_best["rmse"].map(lambda x: f"{x:.4f}")
+        display_best["n"] = display_best["n"].map(lambda x: f"{int(x)}")
         display_best = display_best.rename(columns={
             "frequency": "Forecast Frequency",
             "model": "Best Model",
