@@ -53,25 +53,33 @@ The compared models are:
 - `autogluon`: AutoGluon TabularPredictor AutoML regression on the same engineered feature table.
 - `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using the target history plus known future calendar, holiday, and weather covariates.
 
+The stack regressor is a second ensemble benchmark built inside sklearn. It combines ridge, XGBoost, and LightGBM base learners, then fits a ridge meta-model on their predictions. This gives a useful check that a simple blended model can compete with the individual models, but it did not improve the final validation score in either horizon.
+
+The selected daily AutoGluon Tabular model is `WeightedEnsemble_L3_FULL`. It is the refit version of AutoGluon's level-3 weighted ensemble, trained after the validation comparison on all available labeled daily history. In the saved daily predictor, the ensemble is mainly CatBoost and LightGBM-based: `CatBoost_BAG_L1` has 50.0% weight, `LightGBMXT_BAG_L1` 27.3%, `CatBoost_BAG_L2` 18.2%, and `RandomForestMSE_BAG_L2` 4.5%. The separate daily validation fit took about five minutes, and the final daily refit also took about five minutes under the mid-effort AutoGluon settings.
+
 Overall validation RMSE:
 
 | frequency | model | acorn | rmse | n |
 | --- | --- | --- | --- | --- |
-| daily | xgboost_by_acorn | ALL | 0.3528 | 93 |
+| daily | autogluon | ALL | 0.34766 | 93 |
+| daily | xgboost_by_acorn | ALL | 0.35280 | 93 |
 | daily | xgboost | ALL | 0.35315 | 93 |
 | daily | catboost | ALL | 0.35323 | 93 |
-| daily | lightgbm | ALL | 0.3745 | 93 |
+| daily | lightgbm | ALL | 0.37450 | 93 |
 | daily | ridge | ALL | 0.37726 | 93 |
 | daily | stack_regressor | ALL | 0.39551 | 93 |
 | daily | previous_day | ALL | 0.48349 | 93 |
+| daily | autogluon_timeseries | ALL | 0.49169 | 93 |
 | daily | previous_week | ALL | 0.49415 | 93 |
-| daily | seasonal_mean | ALL | 1.5379 | 93 |
+| daily | seasonal_mean | ALL | 1.53788 | 93 |
 | half_hourly | lightgbm | ALL | 0.00737 | 4032 |
+| half_hourly | autogluon | ALL | 0.00743 | 4032 |
 | half_hourly | xgboost_by_acorn | ALL | 0.00795 | 4032 |
 | half_hourly | catboost | ALL | 0.00803 | 4032 |
 | half_hourly | xgboost | ALL | 0.00826 | 4032 |
 | half_hourly | stack_regressor | ALL | 0.00829 | 4032 |
 | half_hourly | ridge | ALL | 0.00993 | 4032 |
+| half_hourly | autogluon_timeseries | ALL | 0.01636 | 4032 |
 | half_hourly | previous_day | ALL | 0.02117 | 4032 |
 | half_hourly | previous_week | ALL | 0.02422 | 4032 |
 | half_hourly | seasonal_mean | ALL | 0.04072 | 4032 |
@@ -79,7 +87,7 @@ Overall validation RMSE:
 Selected final trainable models:
 
 - Half-hourly: `lightgbm` with RMSE `0.00737`.
-- Daily: `xgboost_by_acorn` with RMSE `0.35280`.
+- Daily: `autogluon` with RMSE `0.34766`.
 
 ## Final Outputs
 

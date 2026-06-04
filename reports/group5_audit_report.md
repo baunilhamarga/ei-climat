@@ -1,6 +1,6 @@
 # Group 5 Energy Forecasting Audit Report
 
-Generated from the current project artifacts on 2026-06-02.
+Generated from the project artifacts on 2026-06-02 and updated after the 2026-06-04 AutoGluon refresh.
 
 This file is meant to make the final report easier to write. It gathers the evidence we have already produced: data quality findings, preprocessing choices, feature design, validation results, model selection, final output checks, and the files that support each claim.
 
@@ -165,28 +165,46 @@ Compared models:
 - `previous_week`: same ACORN value from seven days earlier.
 - `seasonal_mean`: historical mean by ACORN and calendar slot.
 - `ridge`: regularized linear regression.
-- `xgboost`: gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
+- `xgboost`: pooled gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
+- `xgboost_by_acorn`: three isolated XGBoost models, one per ACORN, each trained and validated only on that ACORN history.
+- `catboost`: CatBoost gradient boosting on the engineered feature table.
+- `lightgbm`: LightGBM gradient boosting on the engineered feature table.
+- `stack_regressor`: sklearn StackingRegressor with ridge, XGBoost, and LightGBM base learners and a ridge meta-model.
+- `autogluon`: AutoGluon TabularPredictor on the engineered feature table.
+- `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using target history plus known future calendar, holiday, and weather covariates.
 
-The model pipelines impute numeric and categorical features. Categorical features are one-hot encoded. The ridge model also scales transformed features. Predictions are clipped at zero to avoid invalid negative electricity values.
+The sklearn-style model pipelines impute numeric and categorical features. Categorical features are one-hot encoded. The ridge model also scales transformed features. Predictions are clipped at zero to avoid invalid negative electricity values.
 
 Selected models from current validation:
 
 | Horizon | Selected model | Overall RMSE | Validation rows |
 | --- | --- | ---: | ---: |
-| Half-hourly | xgboost | 0.008256 | 4032 |
-| Daily | xgboost | 0.353151 | 93 |
+| Half-hourly | lightgbm | 0.007372 | 4032 |
+| Daily | autogluon | 0.347658 | 93 |
 
 Overall validation metrics:
 
 | frequency | model | acorn | rmse | n |
 | --- | --- | --- | --- | --- |
+| daily | autogluon | ALL | 0.347658 | 93 |
+| daily | xgboost_by_acorn | ALL | 0.352796 | 93 |
 | daily | xgboost | ALL | 0.353151 | 93 |
+| daily | catboost | ALL | 0.353230 | 93 |
+| daily | lightgbm | ALL | 0.374496 | 93 |
 | daily | ridge | ALL | 0.377257 | 93 |
+| daily | stack_regressor | ALL | 0.395510 | 93 |
 | daily | previous_day | ALL | 0.483489 | 93 |
+| daily | autogluon_timeseries | ALL | 0.491688 | 93 |
 | daily | previous_week | ALL | 0.494148 | 93 |
 | daily | seasonal_mean | ALL | 1.537880 | 93 |
+| half_hourly | lightgbm | ALL | 0.007372 | 4032 |
+| half_hourly | autogluon | ALL | 0.007426 | 4032 |
+| half_hourly | xgboost_by_acorn | ALL | 0.007953 | 4032 |
+| half_hourly | catboost | ALL | 0.008033 | 4032 |
 | half_hourly | xgboost | ALL | 0.008256 | 4032 |
+| half_hourly | stack_regressor | ALL | 0.008294 | 4032 |
 | half_hourly | ridge | ALL | 0.009935 | 4032 |
+| half_hourly | autogluon_timeseries | ALL | 0.016361 | 4032 |
 | half_hourly | previous_day | ALL | 0.021174 | 4032 |
 | half_hourly | previous_week | ALL | 0.024217 | 4032 |
 | half_hourly | seasonal_mean | ALL | 0.040723 | 4032 |
@@ -195,29 +213,45 @@ Trainable model metrics by segment:
 
 | frequency | model | acorn | rmse | n |
 | --- | --- | --- | --- | --- |
+| daily | autogluon | ACORN-E | 0.370784 | 31 |
+| daily | autogluon | ACORN-F | 0.406974 | 31 |
+| daily | autogluon | ACORN-Q | 0.243903 | 31 |
+| daily | stack_regressor | ACORN-E | 0.463011 | 31 |
+| daily | stack_regressor | ACORN-F | 0.425364 | 31 |
+| daily | stack_regressor | ACORN-Q | 0.271977 | 31 |
+| daily | xgboost_by_acorn | ACORN-E | 0.369403 | 31 |
+| daily | xgboost_by_acorn | ACORN-F | 0.399533 | 31 |
+| daily | xgboost_by_acorn | ACORN-Q | 0.278049 | 31 |
 | daily | xgboost | ACORN-E | 0.387952 | 31 |
-| daily | ridge | ACORN-E | 0.420502 | 31 |
 | daily | xgboost | ACORN-F | 0.415606 | 31 |
-| daily | ridge | ACORN-F | 0.424276 | 31 |
 | daily | xgboost | ACORN-Q | 0.225638 | 31 |
-| daily | ridge | ACORN-Q | 0.264832 | 31 |
-| daily | xgboost | ALL | 0.353151 | 93 |
-| daily | ridge | ALL | 0.377257 | 93 |
-| half_hourly | xgboost | ACORN-E | 0.008392 | 1344 |
-| half_hourly | ridge | ACORN-E | 0.010833 | 1344 |
-| half_hourly | xgboost | ACORN-F | 0.008902 | 1344 |
-| half_hourly | ridge | ACORN-F | 0.010313 | 1344 |
-| half_hourly | xgboost | ACORN-Q | 0.007403 | 1344 |
-| half_hourly | ridge | ACORN-Q | 0.008508 | 1344 |
-| half_hourly | xgboost | ALL | 0.008256 | 4032 |
-| half_hourly | ridge | ALL | 0.009935 | 4032 |
+| half_hourly | autogluon | ACORN-E | 0.007334 | 1344 |
+| half_hourly | autogluon | ACORN-F | 0.008315 | 1344 |
+| half_hourly | autogluon | ACORN-Q | 0.006518 | 1344 |
+| half_hourly | lightgbm | ACORN-E | 0.007126 | 1344 |
+| half_hourly | lightgbm | ACORN-F | 0.008091 | 1344 |
+| half_hourly | lightgbm | ACORN-Q | 0.006841 | 1344 |
+| half_hourly | stack_regressor | ACORN-E | 0.008520 | 1344 |
+| half_hourly | stack_regressor | ACORN-F | 0.008906 | 1344 |
+| half_hourly | stack_regressor | ACORN-Q | 0.007380 | 1344 |
+| half_hourly | xgboost_by_acorn | ACORN-E | 0.007948 | 1344 |
+| half_hourly | xgboost_by_acorn | ACORN-F | 0.008804 | 1344 |
+| half_hourly | xgboost_by_acorn | ACORN-Q | 0.007005 | 1344 |
+
+AutoGluon and stack-regressor details:
+
+1. The selected daily AutoGluon Tabular predictor is `WeightedEnsemble_L3_FULL`, the full-data refit of the validation-selected level-3 weighted ensemble.
+2. The daily ensemble combines `CatBoost_BAG_L1` at 50.0%, `LightGBMXT_BAG_L1` at 27.3%, `CatBoost_BAG_L2` at 18.2%, and `RandomForestMSE_BAG_L2` at 4.5%.
+3. The daily AutoGluon validation fit took about five minutes, and the final daily refit also took about five minutes under the mid-effort settings.
+4. The stack regressor blends ridge, XGBoost, and LightGBM with a ridge meta-model. It performed competitively on the half-hourly task but did not beat LightGBM or AutoGluon.
+5. AutoGluon TimeSeries was evaluated with rolling final-horizon validation, but it remained weaker than the tabular models in this benchmark.
 
 Interpretation for report writing:
 
-1. The half-hourly XGBoost model improves on previous-day, previous-week, seasonal mean, and ridge baselines.
-2. The daily XGBoost model now has the best overall daily RMSE, ahead of ridge.
-3. XGBoost performs best on all three ACORN groups in the daily split after the current preprocessing choices.
-4. The baseline comparison is important because it shows the model adds value beyond simple repetition.
+1. LightGBM has the best overall half-hourly RMSE, narrowly ahead of AutoGluon Tabular.
+2. AutoGluon Tabular has the best overall daily RMSE, narrowly ahead of the isolated per-ACORN XGBoost models.
+3. The stack regressor is useful as an ensemble benchmark, but the simple ridge meta-model did not outperform the strongest individual tree models.
+4. The baseline comparison is important because it shows the trained models add value beyond simple repetition.
 
 ## Final prediction checks
 
@@ -251,10 +285,13 @@ Final output files:
 Saved models:
 
 - `models/short_term/group5_half_hourly_selected.joblib`
-- `models/short_term/group5_half_hourly_xgboost.joblib`
-- `models/medium_term/group5_daily_selected.joblib`
-- `models/medium_term/group5_daily_ridge.joblib`
-- `models/medium_term/group5_daily_xgboost.joblib`
+- `models/short_term/group5_half_hourly_lightgbm.joblib`
+- `models/short_term/group5_half_hourly_stack_regressor.joblib`
+- `models/short_term/group5_half_hourly_autogluon/`
+- `models/medium_term/group5_daily_selected/`
+- `models/medium_term/group5_daily_autogluon/`
+- `models/medium_term/group5_daily_stack_regressor.joblib`
+- `models/medium_term/group5_daily_xgboost_by_acorn.joblib`
 
 ## Notebook map
 
@@ -292,23 +329,20 @@ Concise report:
 - `reports/group5_report.md`
 - Good base for the final write-up, but this audit file contains more supporting detail.
 
-## Pending AutoGluon extensions
+## AutoGluon refresh notes
 
-After this audit was generated, the pipeline was extended with two AutoGluon trainable models:
+The AutoGluon-only refresh was run after the broader model benchmark so that tabular AutoML and time-series AutoML could be retrained without rerunning all non-AutoGluon models. The refresh updates `outputs/group5/metrics/validation_metrics.csv`, the all-model prediction files, and the selected daily model directory.
 
-- `autogluon`: AutoGluon TabularPredictor on the engineered feature table.
-- `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using target history plus known future calendar, holiday, and weather covariates.
+AutoGluon Tabular now wins the daily chronological validation benchmark with RMSE `0.347658`. The selected daily model is the full-data refit `WeightedEnsemble_L3_FULL`. It should be described as a stacked weighted ensemble, not as a single CatBoost or XGBoost model.
 
-The pipeline has not been rerun yet, so the metrics and selected-model results in this audit do not include either AutoGluon model.
-
-Do not cite AutoGluon validation results until `EI-climat/bin/python scripts/group5_run_pipeline.py` has been rerun and `outputs/group5/metrics/validation_metrics.csv` contains both `autogluon` and `autogluon_timeseries` rows.
+AutoGluon TimeSeries is still included in the comparison, but it is not selected. Its half-hourly validation uses rolling 96-step chunks to match the 48-hour assignment horizon.
 
 ## Limits and risks to mention
 
 1. Forecasts are point forecasts. They do not include uncertainty intervals.
 2. Real weather data is used for the forecast period, following the project assumption.
 3. Recursive forecasting means later predictions depend partly on earlier predicted values.
-4. The project uses practical scikit-learn models, not deep learning. This is appropriate for the assignment size and makes the method easier to explain.
+4. Most selected performance comes from tabular tree and ensemble methods. AutoGluon also tried neural-network and time-series variants, but the strongest final choices remained tabular.
 5. Target outliers were kept because they look plausible. This choice avoids underpredicting high winter and evening demand, but it also means the model must learn those peaks rather than ignore them.
 6. Weather gaps were filled conservatively. This is better than dropping consumption rows, but interpolated weather values are still approximations.
 
@@ -329,4 +363,4 @@ We used a reproducible Python pipeline for Group 5, covering ACORN-E, ACORN-F, a
 
 ## Copy-ready short results paragraph
 
-The selected short-term model is XGBoost, with an overall half-hourly validation RMSE of 0.00826 over 4032 validation rows. The selected medium-term model is also XGBoost, with an overall daily validation RMSE of 0.35315 over 93 validation rows. Both selected models improve on simple repetition and seasonal-mean baselines. The final exported files contain 288 half-hourly predictions and 96 daily predictions, with no missing values and no duplicate ACORN/time keys.
+The selected short-term model is LightGBM, with an overall half-hourly validation RMSE of 0.00737 over 4032 validation rows. The selected medium-term model is AutoGluon Tabular, with an overall daily validation RMSE of 0.34766 over 93 validation rows. The daily AutoGluon predictor is `WeightedEnsemble_L3_FULL`, a stacked weighted ensemble led by CatBoost and LightGBM components. Both selected models improve on simple repetition and seasonal-mean baselines. The final exported files contain 288 half-hourly predictions and 96 daily predictions, with no missing values and no duplicate ACORN/time keys.
