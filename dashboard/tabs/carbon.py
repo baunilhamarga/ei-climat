@@ -89,9 +89,9 @@ class CarbonTab(BaseTab):
         st.subheader("Scenario Estimates")
         scenarios = pd.DataFrame(
             [
-                self._scenario_row("Lower planning estimate", self.LOWER_RUNTIME_HOURS),
-                self._scenario_row("Expected planning estimate", self.EXPECTED_RUNTIME_HOURS),
                 self._scenario_row("18h time used estimate", self.TIME_USED_HOURS),
+                self._scenario_row("Expected planning estimate", self.EXPECTED_RUNTIME_HOURS),
+                self._scenario_row("Lower planning estimate", self.LOWER_RUNTIME_HOURS),
             ]
         )
         display = scenarios.copy()
@@ -106,7 +106,11 @@ class CarbonTab(BaseTab):
             x="Scenario",
             y="CO2e (kg)",
             color="Scenario",
-            color_discrete_sequence=["#4da4a9", "#d49c5e", "#c85a64"],
+            color_discrete_map={
+                "Lower planning estimate": "#4da4a9",
+                "Expected planning estimate": "#d49c5e",
+                "18h time used estimate": "#c85a64",
+            },
             title="Estimated Training Emissions by Runtime Scenario",
             labels={"CO2e (kg)": "Estimated CO2e (kg)"},
         )
