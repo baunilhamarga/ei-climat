@@ -46,8 +46,33 @@ class ForecastDashboardApp:
             st.session_state.last_valid_acorns = acorn_options
         if "acorn_filter" not in st.session_state:
             st.session_state.acorn_filter = acorn_options
+
+        # Initialize or detect theme preference from URL query parameters.
+        # If no theme parameter is present, detect browser theme preferences and reload.
+        if "theme" not in st.query_params:
+            st.html(
+                """
+                <script>
+                const params = new URLSearchParams(window.location.search);
+                if (!params.has('theme')) {
+                    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                    params.set('theme', systemTheme);
+                    window.location.search = params.toString();
+                }
+                </script>
+                """,
+                unsafe_allow_javascript=True,
+            )
+            st.stop()
+
+        # Retrieve and enforce theme parameter
+        theme_param = st.query_params.get("theme")
+        if theme_param not in ["light", "dark"]:
+            theme_param = "dark"  # fallback default
+            st.query_params["theme"] = theme_param
+
         if "theme_mode" not in st.session_state:
-            st.session_state.theme_mode = "system"
+            st.session_state.theme_mode = theme_param
 
         def on_acorn_change():
             if not st.session_state.acorn_filter:
@@ -57,9 +82,11 @@ class ForecastDashboardApp:
                 st.session_state.last_valid_acorns = st.session_state.acorn_filter
 
         def toggle_theme():
-            modes = ["system", "light", "dark"]
+            modes = ["light", "dark"]
             current_idx = modes.index(st.session_state.theme_mode)
-            st.session_state.theme_mode = modes[(current_idx + 1) % len(modes)]
+            new_theme = modes[(current_idx + 1) % len(modes)]
+            st.session_state.theme_mode = new_theme
+            st.query_params["theme"] = new_theme
 
         # Inject custom styling & typography (Outfit Google Font, Glassmorphic KPI Cards)
         StyleManager.apply(st.session_state.theme_mode)
@@ -89,12 +116,12 @@ class ForecastDashboardApp:
                     label_visibility="visible",
                 )
             with col2_toggle:
-                theme_icons = {"system": "🌓", "light": "☀️", "dark": "🌙"}
+                theme_icons = {"light": "☀️", "dark": "🌙"}
                 st.button(
-                    theme_icons[st.session_state.theme_mode],
+                    theme_icons.get(st.session_state.theme_mode, "🌙"),
                     key="theme_toggle",
                     on_click=toggle_theme,
-                    help=f"Click to cycle themes (System -> Light -> Dark).",
+                    help="Click to toggle between Light and Dark mode.",
                 )
 
         if st.session_state.get("show_acorn_warning", False):
