@@ -12,27 +12,27 @@
     "autogluon",
     "autogluon_timeseries"
   ],
-  "interim_csv_dir": "/home/pllima0909/Documents/Git/ei-climat/data/01_interim/group5/csv",
-  "interim_parquet_dir": "/home/pllima0909/Documents/Git/ei-climat/data/01_interim/group5/parquet",
-  "model_ready_csv_dir": "/home/pllima0909/Documents/Git/ei-climat/data/02_processed/group5_modeling/csv",
-  "model_ready_parquet_dir": "/home/pllima0909/Documents/Git/ei-climat/data/02_processed/group5_modeling/parquet",
-  "short_term_model_path": "/home/pllima0909/Documents/Git/ei-climat/models/short_term/group5_half_hourly_selected.joblib",
-  "medium_term_model_path": "/home/pllima0909/Documents/Git/ei-climat/models/medium_term/group5_daily_selected.joblib",
+  "interim_csv_dir": "/root/ei-climat/data/01_interim/group5/csv",
+  "interim_parquet_dir": "/root/ei-climat/data/01_interim/group5/parquet",
+  "model_ready_csv_dir": "/root/ei-climat/data/02_processed/group5_modeling/csv",
+  "model_ready_parquet_dir": "/root/ei-climat/data/02_processed/group5_modeling/parquet",
+  "short_term_model_path": "/root/ei-climat/models/short_term/group5_half_hourly_selected.joblib",
+  "medium_term_model_path": "/root/ei-climat/models/medium_term/group5_daily_selected.joblib",
   "short_term_model_paths": {
-    "ridge": "/home/pllima0909/Documents/Git/ei-climat/models/short_term/group5_half_hourly_ridge.joblib",
-    "xgboost": "/home/pllima0909/Documents/Git/ei-climat/models/short_term/group5_half_hourly_xgboost.joblib",
-    "catboost": "/home/pllima0909/Documents/Git/ei-climat/models/short_term/group5_half_hourly_catboost.joblib",
-    "lightgbm": "/home/pllima0909/Documents/Git/ei-climat/models/short_term/group5_half_hourly_lightgbm.joblib",
-    "autogluon": "/home/pllima0909/Documents/Git/ei-climat/models/short_term/group5_half_hourly_autogluon",
-    "autogluon_timeseries": "/home/pllima0909/Documents/Git/ei-climat/models/short_term/group5_half_hourly_autogluon_timeseries"
+    "ridge": "/root/ei-climat/models/short_term/group5_half_hourly_ridge.joblib",
+    "xgboost": "/root/ei-climat/models/short_term/group5_half_hourly_xgboost.joblib",
+    "catboost": "/root/ei-climat/models/short_term/group5_half_hourly_catboost.joblib",
+    "lightgbm": "/root/ei-climat/models/short_term/group5_half_hourly_lightgbm.joblib",
+    "autogluon": "/root/ei-climat/models/short_term/group5_half_hourly_autogluon",
+    "autogluon_timeseries": "/root/ei-climat/models/short_term/group5_half_hourly_autogluon_timeseries"
   },
   "medium_term_model_paths": {
-    "ridge": "/home/pllima0909/Documents/Git/ei-climat/models/medium_term/group5_daily_ridge.joblib",
-    "xgboost": "/home/pllima0909/Documents/Git/ei-climat/models/medium_term/group5_daily_xgboost.joblib",
-    "catboost": "/home/pllima0909/Documents/Git/ei-climat/models/medium_term/group5_daily_catboost.joblib",
-    "lightgbm": "/home/pllima0909/Documents/Git/ei-climat/models/medium_term/group5_daily_lightgbm.joblib",
-    "autogluon": "/home/pllima0909/Documents/Git/ei-climat/models/medium_term/group5_daily_autogluon",
-    "autogluon_timeseries": "/home/pllima0909/Documents/Git/ei-climat/models/medium_term/group5_daily_autogluon_timeseries"
+    "ridge": "/root/ei-climat/models/medium_term/group5_daily_ridge.joblib",
+    "xgboost": "/root/ei-climat/models/medium_term/group5_daily_xgboost.joblib",
+    "catboost": "/root/ei-climat/models/medium_term/group5_daily_catboost.joblib",
+    "lightgbm": "/root/ei-climat/models/medium_term/group5_daily_lightgbm.joblib",
+    "autogluon": "/root/ei-climat/models/medium_term/group5_daily_autogluon",
+    "autogluon_timeseries": "/root/ei-climat/models/medium_term/group5_daily_autogluon_timeseries"
   },
   "best_half_hourly_overall": {
     "model": "lightgbm",

@@ -1,5 +1,5 @@
 EI-climat/
-tmp/
+*tmp*
 .codex/
 .agents/
 

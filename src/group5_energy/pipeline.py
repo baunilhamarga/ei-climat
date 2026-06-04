@@ -4,9 +4,12 @@ import importlib.util
 import json
 import os
 import shutil
+import threading
+import time
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib-group5")
 
@@ -191,111 +194,154 @@ class PipelineResult:
     validation_predictions_daily: pd.DataFrame
 
 
-def run_pipeline() -> PipelineResult:
-    ensure_output_dirs()
+def run_pipeline(verbose: bool = True) -> PipelineResult:
+    progress = ProgressLogger(enabled=pipeline_progress_enabled(verbose))
+    active_models = active_trainable_model_names()
+    progress.log("Starting Group 5 pipeline.")
+    progress.log(f"Active trainable models: {', '.join(active_models)}.")
 
-    half_history = load_half_hourly_history()
-    daily_history = load_daily_history()
-    half_template = load_half_hourly_template()
-    daily_template = load_daily_template()
-    weather_hourly = load_hourly_weather()
-    temperatures = load_temperatures()
-    weather_daily = load_daily_weather()
-    holidays = load_holidays()
-    write_clean_interim_sources(weather_hourly, temperatures, weather_daily, holidays)
+    with progress.stage("create output directories"):
+        ensure_output_dirs()
+
+    with progress.stage("load input tables"):
+        half_history = load_half_hourly_history()
+        daily_history = load_daily_history()
+        half_template = load_half_hourly_template()
+        daily_template = load_daily_template()
+        weather_hourly = load_hourly_weather()
+        temperatures = load_temperatures()
+        weather_daily = load_daily_weather()
+        holidays = load_holidays()
+        progress.log(
+            "Loaded "
+            f"{len(half_history)} half-hourly rows, {len(daily_history)} daily rows, "
+            f"{len(half_template)} half-hourly template rows, and {len(daily_template)} daily template rows."
+        )
+
+    with progress.stage("write cleaned weather and holiday tables"):
+        write_clean_interim_sources(weather_hourly, temperatures, weather_daily, holidays)
 
     half_clients = latest_clients(half_history, "DateTime")
     daily_clients = latest_clients(daily_history, "Date")
 
-    half_joined = prepare_half_hourly_frame(
-        half_history, weather_hourly, temperatures, holidays, half_clients
-    )
-    daily_joined = prepare_daily_frame(daily_history, weather_daily, holidays, daily_clients)
+    with progress.stage("join historical and forecast covariates"):
+        half_joined = prepare_half_hourly_frame(
+            half_history, weather_hourly, temperatures, holidays, half_clients
+        )
+        daily_joined = prepare_daily_frame(daily_history, weather_daily, holidays, daily_clients)
 
-    half_future = prepare_half_hourly_frame(
-        half_template, weather_hourly, temperatures, holidays, half_clients
-    )
-    daily_future = prepare_daily_frame(daily_template, weather_daily, holidays, daily_clients)
+        half_future = prepare_half_hourly_frame(
+            half_template, weather_hourly, temperatures, holidays, half_clients
+        )
+        daily_future = prepare_daily_frame(daily_template, weather_daily, holidays, daily_clients)
+        progress.log(
+            "Prepared joined frames: "
+            f"{len(half_joined)} half-hourly history rows, {len(daily_joined)} daily history rows, "
+            f"{len(half_future)} half-hourly forecast rows, {len(daily_future)} daily forecast rows."
+        )
 
-    write_joined_interim_frames(half_joined, daily_joined, half_future, daily_future)
+    with progress.stage("write joined interim frames"):
+        write_joined_interim_frames(half_joined, daily_joined, half_future, daily_future)
 
-    half_features = add_history_lags(half_joined, HALF_TARGET, "half_hourly")
-    daily_features = add_history_lags(daily_joined, DAILY_TARGET, "daily")
-    write_model_ready_frames(half_features, daily_features, half_future, daily_future)
+    with progress.stage("build lag and rolling features"):
+        half_features = add_history_lags(half_joined, HALF_TARGET, "half_hourly")
+        daily_features = add_history_lags(daily_joined, DAILY_TARGET, "daily")
+        write_model_ready_frames(half_features, daily_features, half_future, daily_future)
 
-    half_features = read_model_ready_frame("group_5_half_hourly_features", "half_hourly")
-    daily_features = read_model_ready_frame("group_5_daily_features", "daily")
-    half_future = read_model_ready_frame("group_5_half_hourly_forecast_features", "half_hourly")
-    daily_future = read_model_ready_frame("group_5_daily_forecast_features", "daily")
+    with progress.stage("reload model-ready feature frames"):
+        half_features = read_model_ready_frame("group_5_half_hourly_features", "half_hourly")
+        daily_features = read_model_ready_frame("group_5_daily_features", "daily")
+        half_future = read_model_ready_frame("group_5_half_hourly_forecast_features", "half_hourly")
+        daily_future = read_model_ready_frame("group_5_daily_forecast_features", "daily")
 
-    half_model_name, half_metrics, half_valid_predictions = fit_and_evaluate(
-        half_features,
-        frequency="half_hourly",
-        target_col=HALF_TARGET,
-        time_col="DateTime",
-        validation_start=pd.Timestamp(HALF_HOURLY_VALIDATION_START),
-    )
-    daily_model_name, daily_metrics, daily_valid_predictions = fit_and_evaluate(
-        daily_features,
-        frequency="daily",
-        target_col=DAILY_TARGET,
-        time_col="Date",
-        validation_start=pd.Timestamp(DAILY_VALIDATION_START),
-    )
+    with progress.stage("run half-hourly chronological validation"):
+        half_model_name, half_metrics, half_valid_predictions = fit_and_evaluate(
+            half_features,
+            frequency="half_hourly",
+            target_col=HALF_TARGET,
+            time_col="DateTime",
+            validation_start=pd.Timestamp(HALF_HOURLY_VALIDATION_START),
+            progress=progress,
+        )
+    with progress.stage("run daily chronological validation"):
+        daily_model_name, daily_metrics, daily_valid_predictions = fit_and_evaluate(
+            daily_features,
+            frequency="daily",
+            target_col=DAILY_TARGET,
+            time_col="Date",
+            validation_start=pd.Timestamp(DAILY_VALIDATION_START),
+            progress=progress,
+        )
 
-    half_models = fit_final_models(
-        "half_hourly",
-        half_features,
-        half_future,
-        HALF_TARGET,
-        "DateTime",
-    )
-    daily_models = fit_final_models(
-        "daily",
-        daily_features,
-        daily_future,
-        DAILY_TARGET,
-        "Date",
-    )
-    save_models(half_models, daily_models, half_model_name, daily_model_name)
+    with progress.stage("fit final half-hourly models"):
+        half_models = fit_final_models(
+            "half_hourly",
+            half_features,
+            half_future,
+            HALF_TARGET,
+            "DateTime",
+            progress=progress,
+        )
+    with progress.stage("fit final daily models"):
+        daily_models = fit_final_models(
+            "daily",
+            daily_features,
+            daily_future,
+            DAILY_TARGET,
+            "Date",
+            progress=progress,
+        )
+    with progress.stage("save final and selected model artifacts"):
+        save_models(half_models, daily_models, half_model_name, daily_model_name)
     half_model = half_models[half_model_name]
     daily_model = daily_models[daily_model_name]
 
-    half_predictions = forecast_with_model(
-        half_model,
-        half_model_name,
-        half_features,
-        half_future,
-        frequency="half_hourly",
-        target_col=HALF_TARGET,
-        prediction_col="Conso_moy_predict",
-        time_col="DateTime",
-    )
-    daily_predictions = forecast_with_model(
-        daily_model,
-        daily_model_name,
-        daily_features,
-        daily_future,
-        frequency="daily",
-        target_col=DAILY_TARGET,
-        prediction_col="Conso_kWh_predict",
-        time_col="Date",
-    )
+    with progress.stage("generate final forecasts"):
+        half_predictions = forecast_with_model(
+            half_model,
+            half_model_name,
+            half_features,
+            half_future,
+            frequency="half_hourly",
+            target_col=HALF_TARGET,
+            prediction_col="Conso_moy_predict",
+            time_col="DateTime",
+        )
+        daily_predictions = forecast_with_model(
+            daily_model,
+            daily_model_name,
+            daily_features,
+            daily_future,
+            frequency="daily",
+            target_col=DAILY_TARGET,
+            prediction_col="Conso_kWh_predict",
+            time_col="Date",
+        )
 
     metrics = pd.concat([half_metrics, daily_metrics], ignore_index=True)
-    write_core_outputs(
-        half_predictions,
-        daily_predictions,
-        metrics,
-        half_valid_predictions,
-        daily_valid_predictions,
-        half_model_name,
-        daily_model_name,
+    with progress.stage("write predictions, validation metrics, and run summary"):
+        write_core_outputs(
+            half_predictions,
+            daily_predictions,
+            metrics,
+            half_valid_predictions,
+            daily_valid_predictions,
+            half_model_name,
+            daily_model_name,
+        )
+    with progress.stage("write EDA dashboard tables"):
+        write_eda_tables(half_features, daily_features)
+    with progress.stage("generate PDF figures"):
+        generate_figures(half_features, daily_features, half_predictions, daily_predictions, metrics)
+    with progress.stage("write markdown report"):
+        write_report(half_features, daily_features, metrics)
+    with progress.stage("validate generated outputs"):
+        validate_outputs(half_predictions, daily_predictions, metrics)
+
+    progress.log(
+        "Pipeline complete. "
+        f"Selected models: half-hourly={half_model_name}, daily={daily_model_name}."
     )
-    write_eda_tables(half_features, daily_features)
-    generate_figures(half_features, daily_features, half_predictions, daily_predictions, metrics)
-    write_report(half_features, daily_features, metrics)
-    validate_outputs(half_predictions, daily_predictions, metrics)
 
     return PipelineResult(
         half_hourly_predictions=half_predictions,
@@ -304,6 +350,94 @@ def run_pipeline() -> PipelineResult:
         validation_predictions_half_hourly=half_valid_predictions,
         validation_predictions_daily=daily_valid_predictions,
     )
+
+
+class ProgressLogger:
+    def __init__(self, enabled: bool = True, heartbeat_seconds: int | None = None):
+        self.enabled = enabled
+        self.started_at = time.monotonic()
+        self.heartbeat_seconds = heartbeat_seconds if heartbeat_seconds is not None else progress_heartbeat_seconds()
+
+    def log(self, message: str) -> None:
+        if self.enabled:
+            print(f"[group5 +{format_elapsed(time.monotonic() - self.started_at)}] {message}", flush=True)
+
+    @contextmanager
+    def stage(self, message: str, heartbeat: bool = False) -> Iterator[None]:
+        if not self.enabled:
+            yield
+            return
+
+        self.log(f"Starting {message}.")
+        stage_started_at = time.monotonic()
+        stop_event, thread = self._start_heartbeat(message, stage_started_at, heartbeat)
+        try:
+            yield
+        except Exception:
+            self._stop_heartbeat(stop_event, thread)
+            self.log(f"Failed {message} after {format_elapsed(time.monotonic() - stage_started_at)}.")
+            raise
+        self._stop_heartbeat(stop_event, thread)
+        self.log(f"Finished {message} in {format_elapsed(time.monotonic() - stage_started_at)}.")
+
+    def _start_heartbeat(
+        self,
+        message: str,
+        stage_started_at: float,
+        heartbeat: bool,
+    ) -> tuple[threading.Event | None, threading.Thread | None]:
+        if not heartbeat or self.heartbeat_seconds <= 0:
+            return None, None
+
+        stop_event = threading.Event()
+
+        def heartbeat_loop() -> None:
+            while not stop_event.wait(self.heartbeat_seconds):
+                elapsed = format_elapsed(time.monotonic() - stage_started_at)
+                self.log(f"Still running {message} ({elapsed} elapsed).")
+
+        thread = threading.Thread(target=heartbeat_loop, daemon=True)
+        thread.start()
+        return stop_event, thread
+
+    @staticmethod
+    def _stop_heartbeat(stop_event: threading.Event | None, thread: threading.Thread | None) -> None:
+        if stop_event is None or thread is None:
+            return
+        stop_event.set()
+        thread.join(timeout=1)
+
+
+def progress_stage(progress: ProgressLogger | None, message: str, heartbeat: bool = False) -> Any:
+    if progress is None:
+        return nullcontext()
+    return progress.stage(message, heartbeat=heartbeat)
+
+
+def pipeline_progress_enabled(default: bool) -> bool:
+    raw_value = os.environ.get("GROUP5_PIPELINE_PROGRESS")
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def progress_heartbeat_seconds() -> int:
+    raw_value = os.environ.get("GROUP5_PROGRESS_HEARTBEAT_SECONDS", "30")
+    try:
+        return max(0, int(raw_value))
+    except ValueError:
+        return 30
+
+
+def format_elapsed(seconds: float) -> str:
+    seconds = max(0, int(round(seconds)))
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours:d}h {minutes:02d}m {seconds:02d}s"
+    if minutes:
+        return f"{minutes:d}m {seconds:02d}s"
+    return f"{seconds:d}s"
 
 
 def ensure_output_dirs() -> None:
@@ -1137,41 +1271,56 @@ def fit_and_evaluate(
     target_col: str,
     time_col: str,
     validation_start: pd.Timestamp,
+    progress: ProgressLogger | None = None,
 ) -> tuple[str, pd.DataFrame, pd.DataFrame]:
     train = df[df[time_col] < validation_start].copy()
     valid = df[df[time_col] >= validation_start].copy()
     if train.empty or valid.empty:
         raise ValueError(f"Invalid validation split for {frequency}.")
 
+    if progress is not None:
+        progress.log(
+            f"{frequency} validation split: {len(train)} training rows before "
+            f"{validation_start:%Y-%m-%d %H:%M:%S}, {len(valid)} validation rows."
+        )
+
     valid_predictions = valid[["Acorn", time_col, target_col]].copy()
     valid_predictions = add_baseline_predictions(train, valid_predictions, valid, frequency, target_col)
 
     train_x = feature_matrix(train, frequency)
     valid_x = feature_matrix(valid, frequency)
-    for model_name in active_trainable_model_names():
-        if model_name == AUTOGLUON_TIMESERIES_MODEL:
-            model = make_model(
-                model_name,
-                frequency,
-                autogluon_validation_path(frequency, model_name),
-                prediction_length=forecast_horizon_length(valid, time_col),
-            )
-            model.fit_history(train, target_col, time_col)
-            valid_predictions[model_name] = clip_predictions(
-                model.predict_horizon(train, valid, target_col, time_col)
-            )
-            continue
-        model_path = autogluon_validation_path(frequency, model_name) if model_name == AUTOGLUON_TABULAR_MODEL else None
-        model = make_model(model_name, frequency, model_path)
-        model.fit(train_x, train[target_col])
-        valid_predictions[model_name] = clip_predictions(model.predict(valid_x))
+    active_models = active_trainable_model_names()
+    for index, model_name in enumerate(active_models, start=1):
+        stage_label = f"{frequency} validation model {index}/{len(active_models)}: {model_name}"
+        with progress_stage(progress, stage_label, heartbeat=True):
+            if model_name == AUTOGLUON_TIMESERIES_MODEL:
+                model = make_model(
+                    model_name,
+                    frequency,
+                    autogluon_validation_path(frequency, model_name),
+                    prediction_length=forecast_horizon_length(valid, time_col),
+                )
+                model.fit_history(train, target_col, time_col)
+                valid_predictions[model_name] = clip_predictions(
+                    model.predict_horizon(train, valid, target_col, time_col)
+                )
+                continue
+            model_path = autogluon_validation_path(frequency, model_name) if model_name == AUTOGLUON_TABULAR_MODEL else None
+            model = make_model(model_name, frequency, model_path)
+            model.fit(train_x, train[target_col])
+            valid_predictions[model_name] = clip_predictions(model.predict(valid_x))
 
     valid_predictions = valid_predictions.rename(columns={target_col: "actual", time_col: "timestamp"})
     valid_predictions.insert(0, "frequency", frequency)
 
     metrics = validation_metrics(valid_predictions)
-    selected_name = selected_trainable_model(metrics, frequency)["model"]
-    return selected_name, metrics, valid_predictions
+    selected = selected_trainable_model(metrics, frequency)
+    if progress is not None:
+        progress.log(
+            f"{frequency} validation selected {selected['model']} "
+            f"with RMSE {selected['rmse']:.5f} over {selected['n']} rows."
+        )
+    return str(selected["model"]), metrics, valid_predictions
 
 
 def add_baseline_predictions(
@@ -1254,19 +1403,23 @@ def fit_final_models(
     future: pd.DataFrame,
     target_col: str,
     time_col: str,
+    progress: ProgressLogger | None = None,
 ) -> dict[str, Any]:
-    return {
-        model_name: fit_final_model(
-            model_name,
-            frequency,
-            history,
-            future,
-            target_col,
-            time_col,
-            model_storage_path(frequency, model_name, selected=False),
-        )
-        for model_name in active_trainable_model_names()
-    }
+    active_models = active_trainable_model_names()
+    models: dict[str, Any] = {}
+    for index, model_name in enumerate(active_models, start=1):
+        stage_label = f"{frequency} final model {index}/{len(active_models)}: {model_name}"
+        with progress_stage(progress, stage_label, heartbeat=True):
+            models[model_name] = fit_final_model(
+                model_name,
+                frequency,
+                history,
+                future,
+                target_col,
+                time_col,
+                model_storage_path(frequency, model_name, selected=False),
+            )
+    return models
 
 
 def fit_final_model(

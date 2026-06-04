@@ -65,7 +65,7 @@ Overall validation RMSE:
 | daily | autogluon_timeseries | ALL | 0.55382 | 93 |
 | daily | seasonal_mean | ALL | 1.5379 | 93 |
 | half_hourly | lightgbm | ALL | 0.00737 | 4032 |
-| half_hourly | autogluon | ALL | 0.00757 | 4032 |
+| half_hourly | autogluon | ALL | 0.00764 | 4032 |
 | half_hourly | catboost | ALL | 0.00803 | 4032 |
 | half_hourly | xgboost | ALL | 0.00826 | 4032 |
 | half_hourly | ridge | ALL | 0.00993 | 4032 |
