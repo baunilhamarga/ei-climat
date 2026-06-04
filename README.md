@@ -97,6 +97,31 @@ EI-climat/bin/python scripts/group5_update_ag_models.py
 
 `autogluon_timeseries` validation uses rolling final-horizon chunks: 96 half-hourly steps for the 48-hour task, and the available daily validation horizon for the daily task. This avoids scoring the half-hourly TimeSeries model on a single 28-day direct forecast when the assignment only asks it to forecast 48 hours. The mid-effort command disables AutoGluon Tabular dynamic stacking (`GROUP5_AUTOGLUON_DYNAMIC_STACKING=0`) because DyStack starts Ray and can emit harmless metrics-exporter errors in this local environment; explicit bagging and one stack level are still enabled.
 
+For a high-cost AutoGluon experiment that does not overwrite the mid-effort AutoGluon rows, run the separate best-run updater. It writes `autogluon_best` and `autogluon_timeseries_best` model directories, metrics, validation predictions, and final-horizon predictions, then lets them compete on the dashboard against the existing models:
+
+```bash
+GROUP5_AUTOGLUON_NUM_GPUS=1 \
+GROUP5_AUTOGLUON_PRESETS=best_quality \
+GROUP5_AUTOGLUON_HALF_HOURLY_TIME_LIMIT=0 \
+GROUP5_AUTOGLUON_DAILY_TIME_LIMIT=0 \
+GROUP5_AUTOGLUON_NUM_BAG_FOLDS=10 \
+GROUP5_AUTOGLUON_NUM_BAG_SETS=3 \
+GROUP5_AUTOGLUON_NUM_STACK_LEVELS=2 \
+GROUP5_AUTOGLUON_DYNAMIC_STACKING=1 \
+GROUP5_AUTOGLUON_FIT_WEIGHTED_ENSEMBLE=1 \
+GROUP5_AUTOGLUON_VERBOSITY=3 \
+GROUP5_AUTOGLUON_TS_PRESETS=best_quality \
+GROUP5_AUTOGLUON_TS_HALF_HOURLY_TIME_LIMIT=0 \
+GROUP5_AUTOGLUON_TS_DAILY_TIME_LIMIT=0 \
+GROUP5_AUTOGLUON_TS_NUM_VAL_WINDOWS=5 \
+GROUP5_AUTOGLUON_TS_REFIT_FULL=1 \
+GROUP5_AUTOGLUON_TS_ENABLE_ENSEMBLE=1 \
+GROUP5_AUTOGLUON_TS_VERBOSITY=3 \
+EI-climat/bin/python scripts/group5_update_ag_best_models.py
+```
+
+The `0` time limits mean the wrapper does not pass an internal AutoGluon time cap. Let this run finish cleanly so the final model directories and dashboard artifacts are written.
+
 To run only a subset of trainable models, set:
 
 ```bash

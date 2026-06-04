@@ -1333,6 +1333,7 @@ class AutoGluonTabularModel:
         self.num_cpus = autogluon_cpu_count()
         self.num_gpus = autogluon_gpu_count()
         self.num_bag_folds = nonnegative_int_env("GROUP5_AUTOGLUON_NUM_BAG_FOLDS")
+        self.num_bag_sets = positive_int_env("GROUP5_AUTOGLUON_NUM_BAG_SETS")
         self.num_stack_levels = nonnegative_int_env("GROUP5_AUTOGLUON_NUM_STACK_LEVELS")
         self.holdout_frac = float_env("GROUP5_AUTOGLUON_HOLDOUT_FRAC", minimum=0.0, maximum=1.0)
         self.dynamic_stacking = bool_env("GROUP5_AUTOGLUON_DYNAMIC_STACKING")
@@ -1361,6 +1362,8 @@ class AutoGluonTabularModel:
             fit_kwargs["time_limit"] = self.time_limit
         if self.num_bag_folds is not None:
             fit_kwargs["num_bag_folds"] = self.num_bag_folds
+        if self.num_bag_sets is not None:
+            fit_kwargs["num_bag_sets"] = self.num_bag_sets
         if self.num_stack_levels is not None:
             fit_kwargs["num_stack_levels"] = self.num_stack_levels
         if self.holdout_frac is not None:
