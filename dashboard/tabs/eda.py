@@ -85,7 +85,7 @@ class EDATab(BaseTab):
         StyleManager.style_plotly_chart(fig_weekly, st.session_state.theme_mode)
         col2.plotly_chart(fig_weekly, width='stretch')
 
-        # Temperature Scatter and Autocorrelation Plots Side-by-Side
+        # Temperature Scatter and Correlation Matrix Side-by-Side
         col3, col4 = st.columns(2)
         fig_temp = px.scatter(
             filtered_daily,
@@ -103,6 +103,47 @@ class EDATab(BaseTab):
         StyleManager.style_plotly_chart(fig_temp, st.session_state.theme_mode)
         col3.plotly_chart(fig_temp, width='stretch')
 
+        # Correlation Matrix
+        corr_cols = [
+            "Conso_kWh",
+            "temperatureMean",
+            "temperatureMin",
+            "temperatureMax",
+            "is_weekend",
+            "is_holiday"
+        ]
+        available_cols = [col for col in corr_cols if col in filtered_daily.columns]
+        corr_data = filtered_daily[available_cols].copy()
+        for col in ["is_weekend", "is_holiday"]:
+            if col in corr_data.columns:
+                corr_data[col] = corr_data[col].astype(int)
+
+        corr_df = corr_data.corr()
+
+        column_mapping = {
+            "Conso_kWh": "Consumption",
+            "temperatureMean": "Mean Temp",
+            "temperatureMin": "Min Temp",
+            "temperatureMax": "Max Temp",
+            "is_weekend": "Weekend",
+            "is_holiday": "Holiday"
+        }
+        corr_df.index = [column_mapping.get(idx, idx) for idx in corr_df.index]
+        corr_df.columns = [column_mapping.get(col, col) for col in corr_df.columns]
+
+        fig_corr = px.imshow(
+            corr_df,
+            text_auto=".2f",
+            color_continuous_scale="RdBu",
+            zmin=-1.0,
+            zmax=1.0,
+            title="Correlation Matrix of Daily Variables",
+            labels=dict(color="Correlation")
+        )
+        StyleManager.style_plotly_chart(fig_corr, st.session_state.theme_mode)
+        col4.plotly_chart(fig_corr, width='stretch')
+
+        # Daily Autocorrelation (Full Width)
         autocorr = data["autocorr"][data["autocorr"]["Acorn"].isin(selected_acorns)]
         fig_autocorr = px.line(
             autocorr,
@@ -118,4 +159,4 @@ class EDATab(BaseTab):
             }
         )
         StyleManager.style_plotly_chart(fig_autocorr, st.session_state.theme_mode)
-        col4.plotly_chart(fig_autocorr, width='stretch')
+        st.plotly_chart(fig_autocorr, width='stretch')

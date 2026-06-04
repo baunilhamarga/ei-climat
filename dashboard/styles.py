@@ -785,6 +785,10 @@ class StyleManager:
             ),
             title=dict(
                 font=dict(color=text_color, size=16)
+            ),
+            coloraxis_colorbar=dict(
+                tickfont=dict(color=text_color),
+                title=dict(font=dict(color=text_color))
             )
         )
         
