@@ -253,7 +253,7 @@ class EDATab(BaseTab):
             }
         )
 
-        col1, col2 = st.columns([3, 2])
+        col1, col2 = st.columns([3, 2], vertical_alignment="center")
         with col1:
             st.markdown(
                 f'<div class="scrollable-table-wrapper">{display_summary.to_html(index=False)}</div>',
