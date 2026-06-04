@@ -14,9 +14,12 @@ class ValidationTab(BaseTab):
         metric_filter = data["metrics"][data["metrics"]["acorn"].isin(["ALL", *selected_acorns])]
 
         st.markdown(
-            "Validation is chronological: models train on earlier history and are scored on the later "
-            "holdout period before the final forecast window. RMSE is the main comparison metric, so lower "
-            "values indicate better validation performance."
+            '<div class="intro-panel">'
+            '<p>Validation is chronological: models train on earlier history and are scored on the later '
+            'holdout period before the final forecast window. RMSE is the main comparison metric, so lower '
+            'values indicate better validation performance.</p>'
+            '</div>',
+            unsafe_allow_html=True,
         )
         
         st.subheader("Model Metrics Matrix")
@@ -27,17 +30,70 @@ class ValidationTab(BaseTab):
         )
         display_metrics = metric_filter.sort_values(["frequency", "acorn", "rmse"]).copy()
         display_metrics = display_metrics[["frequency", "acorn", "model", "rmse", "n"]]
-        display_metrics["frequency"] = display_metrics["frequency"].map(StyleManager.FREQUENCY_MAP)
-        display_metrics["model"] = display_metrics["model"].map(StyleManager.MODEL_MAP)
-        display_metrics["rmse"] = display_metrics["rmse"].map(lambda x: f"{x:.4f}")
-        display_metrics = display_metrics.rename(columns={
-            "frequency": "Forecast Frequency",
-            "acorn": "ACORN Segment",
-            "model": "Model",
-            "rmse": "Validation RMSE",
-            "n": "Observations (N)"
-        })
-        st.markdown(f'<div class="scrollable-table-wrapper">{display_metrics.to_html(index=False)}</div>', unsafe_allow_html=True)
+        
+        matrix_rows_html = ""
+        for _, row in display_metrics.iterrows():
+            freq = row["frequency"]
+            acorn = row["acorn"]
+            model_key = row["model"]
+            rmse_val = f"{row['rmse']:.6f}" if pd.notna(row['rmse']) else "n/a"
+            obs_n = f"{int(row['n'])}" if pd.notna(row['n']) else "0"
+            
+            # Format frequency badge
+            if freq == "half_hourly":
+                freq_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.78rem; background: rgba(77, 164, 169, 0.12); color: #4da4a9; border: 1px solid rgba(77, 164, 169, 0.25);">Half-Hourly</span>'
+            else:
+                freq_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.78rem; background: rgba(212, 156, 94, 0.12); color: #d49c5e; border: 1px solid rgba(212, 156, 94, 0.25);">Daily</span>'
+                
+            # Format ACORN badge
+            if acorn == "ALL":
+                acorn_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; background: var(--kpi-border); color: var(--theme-text);">All Segments</span>'
+            elif acorn == "ACORN-E":
+                acorn_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; background: rgba(77, 164, 169, 0.12); color: #4da4a9; border: 1px solid rgba(77, 164, 169, 0.25);">ACORN-E</span>'
+            elif acorn == "ACORN-F":
+                acorn_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; background: rgba(212, 156, 94, 0.12); color: #d49c5e; border: 1px solid rgba(212, 156, 94, 0.25);">ACORN-F</span>'
+            else: # ACORN-Q
+                acorn_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; background: rgba(200, 90, 100, 0.12); color: #c85a64; border: 1px solid rgba(200, 90, 100, 0.25);">ACORN-Q</span>'
+                
+            # Format model label
+            nice_model_name = StyleManager.MODEL_MAP.get(model_key, model_key)
+            if model_key in {"previous_day", "previous_week", "seasonal_mean"}:
+                model_display = f'<span style="font-weight: 500; color: #c85a64;">{nice_model_name}</span>'
+            else:
+                code_color = "#4da4a9" if freq == "half_hourly" else "#d49c5e"
+                model_display = f'<code style="font-family: monospace; font-size: 0.8rem; background: var(--kpi-border); color: {code_color}; padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-block;">{nice_model_name}</code>'
+                
+            matrix_rows_html += (
+                f'<tr>'
+                f'<td style="vertical-align: middle; padding: 10px 14px;">{freq_badge}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px;">{acorn_badge}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px;">{model_display}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px;">'
+                f'<div style="font-weight: 600; color: var(--theme-text);">{rmse_val}</div>'
+                f'</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--kpi-sub);">{obs_n}</td>'
+                f'</tr>'
+            )
+
+        matrix_html = (
+            '<div class="scrollable-table-wrapper" style="max-height: 480px;">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead>'
+            '<tr>'
+            '<th>Forecast Frequency</th>'
+            '<th>ACORN Segment</th>'
+            '<th>Model</th>'
+            '<th>Validation RMSE</th>'
+            '<th>Observations (N)</th>'
+            '</tr>'
+            '</thead>'
+            '<tbody>'
+            f'{matrix_rows_html}'
+            '</tbody>'
+            '</table>'
+            '</div>'
+        )
+        st.markdown(matrix_html, unsafe_allow_html=True)
         
         st.subheader("Overall Performance (All ACORN Segments)")
         st.markdown(

@@ -92,6 +92,86 @@ class ForecastDashboardApp:
         # Inject custom styling & typography (Outfit Google Font, Glassmorphic KPI Cards)
         StyleManager.apply(st.session_state.theme_mode)
         
+        # Inject Javascript to hide the ACORN filter on tabs where it does not affect anything (About and Carbon tabs)
+        st.html(
+            """
+            <script>
+            const parentWin = window.parent || window;
+            if (parentWin.tabIntervalId) {
+                parentWin.clearInterval(parentWin.tabIntervalId);
+            }
+            parentWin.tabIntervalId = parentWin.setInterval(() => {
+                try {
+                    const doc = parentWin.document;
+                    const tabs = Array.from(doc.querySelectorAll('[data-baseweb="tab"], [role="tab"]'));
+                    if (tabs.length === 0) return;
+                    
+                    const activeTab = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
+                    if (!activeTab) return;
+                    
+                    const activeText = activeTab.textContent || "";
+                    const shouldHide = activeText.includes("About") || activeText.includes("Carbon");
+                    
+                    const filterEl = doc.querySelector('.st-key-acorn_filter');
+                    if (!filterEl) return;
+                    
+                    const filterCol = filterEl.closest('div[data-testid="column"]');
+                    if (filterCol) {
+                        if (shouldHide) {
+                            if (filterCol.style.display !== 'none') {
+                                filterCol.style.setProperty('display', 'none', 'important');
+                            }
+                        } else {
+                            if (filterCol.style.display === 'none') {
+                                filterCol.style.setProperty('display', 'flex', 'important');
+                            }
+                        }
+                    } else {
+                        if (shouldHide) {
+                            if (filterEl.style.display !== 'none') {
+                                filterEl.style.setProperty('display', 'none', 'important');
+                            }
+                        } else {
+                            if (filterEl.style.display === 'none') {
+                                filterEl.style.setProperty('display', 'flex', 'important');
+                            }
+                        }
+                    }
+                } catch (e) {
+                    try {
+                        const tabs = Array.from(document.querySelectorAll('[data-baseweb="tab"], [role="tab"]'));
+                        if (tabs.length === 0) return;
+                        
+                        const activeTab = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
+                        if (!activeTab) return;
+                        
+                        const activeText = activeTab.textContent || "";
+                        const shouldHide = activeText.includes("About") || activeText.includes("Carbon");
+                        
+                        const filterEl = document.querySelector('.st-key-acorn_filter');
+                        if (!filterEl) return;
+                        
+                        const filterCol = filterEl.closest('div[data-testid="column"]');
+                        const target = filterCol || filterEl;
+                        if (shouldHide) {
+                            if (target.style.display !== 'none') {
+                                target.style.setProperty('display', 'none', 'important');
+                            }
+                        } else {
+                            if (target.style.display === 'none') {
+                                target.style.setProperty('display', 'flex', 'important');
+                            }
+                        }
+                    } catch (innerError) {
+                        console.error("Error in tab filter helper: ", innerError);
+                    }
+                }
+            }, 100);
+            </script>
+            """,
+            unsafe_allow_javascript=True,
+        )
+        
         # Load datasets safely and display instruction if run has not occurred
         try:
             data = self.data_loader.load_artifacts()
@@ -100,7 +180,7 @@ class ForecastDashboardApp:
             st.stop()
 
         # Header layout with Title and the Acorn selector in columns
-        col1, col2 = st.columns([2, 3], vertical_alignment="bottom")
+        col1, col2 = st.columns([2, 3], vertical_alignment="center")
         with col1:
             st.title("UK Household Energy Forecasts - Group 5")
         with col2:

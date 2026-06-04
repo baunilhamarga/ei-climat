@@ -59,18 +59,58 @@ class OverviewTab(BaseTab):
         st.markdown(kpi_html, unsafe_allow_html=True)
 
         st.subheader("Selected Best Performing Models")
-        display_best = best_combined[["frequency", "model", "rmse", "n"]].copy()
-        display_best["frequency"] = display_best["frequency"].map(StyleManager.FREQUENCY_MAP)
-        display_best["model"] = display_best["model"].map(StyleManager.MODEL_MAP)
-        display_best["rmse"] = display_best["rmse"].map(lambda x: f"{x:.4f}")
-        display_best["n"] = display_best["n"].map(lambda x: f"{int(x)}")
-        display_best = display_best.rename(columns={
-            "frequency": "Forecast Frequency",
-            "model": "Best Model",
-            "rmse": "Validation RMSE",
-            "n": "Observations (N)"
-        })
-        st.markdown(f'<div class="scrollable-table-wrapper">{display_best.to_html(index=False)}</div>', unsafe_allow_html=True)
+        
+        best_models_html = (
+            '<div class="scrollable-table-wrapper">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead>'
+            '<tr>'
+            '<th>Forecast Horizon</th>'
+            '<th>Best Model</th>'
+            '<th>Validation RMSE</th>'
+            '<th>Observations (N)</th>'
+            '</tr>'
+            '</thead>'
+            '<tbody>'
+            '<tr>'
+            '<td>'
+            f'<div style="font-weight: 600; font-size: 0.95rem; color: var(--theme-text);">{nice_half_freq}</div>'
+            '<div style="font-size: 0.82rem; color: var(--kpi-sub); margin-top: 2px;">Short-term forecast</div>'
+            '</td>'
+            '<td>'
+            f'<code style="font-family: monospace; font-size: 0.82rem; background: var(--kpi-border); color: #4da4a9; padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-block;">{nice_half_model}</code>'
+            '</td>'
+            '<td>'
+            f'<div style="font-weight: 600; font-size: 0.95rem; color: var(--theme-text);">{half_rmse:.6f}</div>'
+            '<div style="font-size: 0.82rem; color: var(--kpi-sub); margin-top: 2px;">Lower is better</div>'
+            '</td>'
+            '<td>'
+            f'<div style="font-weight: 500; font-size: 0.9rem; color: var(--theme-text);">{int(best_combined.loc[best_combined["frequency"] == "half_hourly", "n"].iloc[0])}</div>'
+            '<div style="font-size: 0.82rem; color: var(--kpi-sub); margin-top: 2px;">Validation steps</div>'
+            '</td>'
+            '</tr>'
+            '<tr>'
+            '<td>'
+            f'<div style="font-weight: 600; font-size: 0.95rem; color: var(--theme-text);">{nice_daily_freq}</div>'
+            '<div style="font-size: 0.82rem; color: var(--kpi-sub); margin-top: 2px;">Medium-term forecast</div>'
+            '</td>'
+            '<td>'
+            f'<code style="font-family: monospace; font-size: 0.82rem; background: var(--kpi-border); color: #d49c5e; padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-block;">{nice_daily_model}</code>'
+            '</td>'
+            '<td>'
+            f'<div style="font-weight: 600; font-size: 0.95rem; color: var(--theme-text);">{daily_rmse:.6f}</div>'
+            '<div style="font-size: 0.82rem; color: var(--kpi-sub); margin-top: 2px;">Lower is better</div>'
+            '</td>'
+            '<td>'
+            f'<div style="font-weight: 500; font-size: 0.9rem; color: var(--theme-text);">{int(best_combined.loc[best_combined["frequency"] == "daily", "n"].iloc[0])}</div>'
+            '<div style="font-size: 0.82rem; color: var(--kpi-sub); margin-top: 2px;">Validation steps</div>'
+            '</td>'
+            '</tr>'
+            '</tbody>'
+            '</table>'
+            '</div>'
+        )
+        st.markdown(best_models_html, unsafe_allow_html=True)
 
         st.subheader("Best Model Forecast vs Actual Validation")
         st.markdown(
