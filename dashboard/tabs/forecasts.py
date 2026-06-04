@@ -5,6 +5,7 @@ import plotly.express as px
 import streamlit as st
 from dashboard.tabs.base import BaseTab
 from dashboard.styles import StyleManager
+from group5_energy.config import ACORN_GROUPS
 
 class ForecastsTab(BaseTab):
     """Orchestrates rendering the model prediction forecasts."""
@@ -130,6 +131,7 @@ class ForecastsTab(BaseTab):
             line_dash="series_type",
             facet_col="Acorn",
             facet_col_wrap=3,
+            facet_col_spacing=0.07,
             title=config["test_title"],
             labels={
                 config["time_col"]: "Timestamp",
@@ -140,6 +142,13 @@ class ForecastsTab(BaseTab):
             },
         )
         fig.update_yaxes(matches=None)
+        fig.for_each_yaxis(lambda y: y.update(showticklabels=True))
+        fig.for_each_annotation(
+            lambda a: a.update(
+                text=f"{a.text.split('=')[-1]} ({ACORN_GROUPS.get(a.text.split('=')[-1], '')})"
+                if "=" in a.text else a.text
+            )
+        )
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
         st.plotly_chart(fig, width='stretch')
 
@@ -177,6 +186,7 @@ class ForecastsTab(BaseTab):
             color="model_label",
             facet_col="Acorn",
             facet_col_wrap=3,
+            facet_col_spacing=0.07,
             title=config["title"],
             labels={
                 config["time_col"]: "Timestamp",
@@ -186,6 +196,13 @@ class ForecastsTab(BaseTab):
             },
         )
         fig.update_yaxes(matches=None)
+        fig.for_each_yaxis(lambda y: y.update(showticklabels=True))
+        fig.for_each_annotation(
+            lambda a: a.update(
+                text=f"{a.text.split('=')[-1]} ({ACORN_GROUPS.get(a.text.split('=')[-1], '')})"
+                if "=" in a.text else a.text
+            )
+        )
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
         st.plotly_chart(fig, width='stretch')
 
@@ -231,6 +248,7 @@ class ForecastsTab(BaseTab):
             line_dash="series_type",
             facet_col="Acorn",
             facet_col_wrap=3,
+            facet_col_spacing=0.07,
             title="Validation Actual vs Prediction",
             labels={
                 "timestamp": "Timestamp",
@@ -241,6 +259,13 @@ class ForecastsTab(BaseTab):
             },
         )
         fig.update_yaxes(matches=None)
+        fig.for_each_yaxis(lambda y: y.update(showticklabels=True))
+        fig.for_each_annotation(
+            lambda a: a.update(
+                text=f"{a.text.split('=')[-1]} ({ACORN_GROUPS.get(a.text.split('=')[-1], '')})"
+                if "=" in a.text else a.text
+            )
+        )
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
         st.plotly_chart(fig, width='stretch')
 
