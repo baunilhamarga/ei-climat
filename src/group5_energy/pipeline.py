@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import math
 import os
 import shutil
 import threading
 import time
+import warnings
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
@@ -132,6 +134,7 @@ TRAINABLE_MODEL_NAMES = (
     AUTOGLUON_TIMESERIES_MODEL,
 )
 BASELINE_MODEL_NAMES = ("previous_day", "previous_week", "seasonal_mean")
+THREAD_ENV_VARS = ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS")
 AUTOGLUON_LABEL = "__target__"
 TIME_SERIES_ID = "item_id"
 TIME_SERIES_TIMESTAMP = "timestamp"
@@ -194,11 +197,26 @@ class PipelineResult:
     validation_predictions_daily: pd.DataFrame
 
 
+@dataclass(frozen=True)
+class RuntimeResources:
+    cpu_count: int
+    autogluon_cpu_count: int
+    autogluon_gpu_count: int
+
+
 def run_pipeline(verbose: bool = True) -> PipelineResult:
-    progress = ProgressLogger(enabled=pipeline_progress_enabled(verbose))
+    configure_warning_filters()
     active_models = active_trainable_model_names()
+    resources = configure_runtime_resources(active_models)
+    progress = ProgressLogger(enabled=pipeline_progress_enabled(verbose))
     progress.log("Starting Group 5 pipeline.")
     progress.log(f"Active trainable models: {', '.join(active_models)}.")
+    progress.log(
+        "Runtime resources: "
+        f"model_cpu_count={resources.cpu_count}, "
+        f"autogluon_num_cpus={resources.autogluon_cpu_count}, "
+        f"autogluon_num_gpus={resources.autogluon_gpu_count}."
+    )
 
     with progress.stage("create output directories"):
         ensure_output_dirs()
@@ -438,6 +456,133 @@ def format_elapsed(seconds: float) -> str:
     if minutes:
         return f"{minutes:d}m {seconds:02d}s"
     return f"{seconds:d}s"
+
+
+def configure_warning_filters() -> None:
+    warnings.filterwarnings(
+        "ignore",
+        message=r"The parameter force_int_remainder_cols is deprecated.*",
+        category=FutureWarning,
+        module=r"sklearn\.compose\._column_transformer",
+    )
+
+
+def configure_runtime_resources(active_models: Iterable[str] | None = None) -> RuntimeResources:
+    active_model_set = set(active_models or ())
+    resources = RuntimeResources(
+        cpu_count=model_cpu_count(),
+        autogluon_cpu_count=autogluon_cpu_count(),
+        autogluon_gpu_count=autogluon_gpu_count() if AUTOGLUON_TABULAR_MODEL in active_model_set else 0,
+    )
+    respect_existing_thread_env = os.environ.get("GROUP5_RESPECT_THREAD_ENV", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    for env_var in THREAD_ENV_VARS:
+        if respect_existing_thread_env:
+            os.environ.setdefault(env_var, str(resources.cpu_count))
+        else:
+            os.environ[env_var] = str(resources.cpu_count)
+    return resources
+
+
+def model_cpu_count() -> int:
+    return positive_int_env("GROUP5_MODEL_NUM_CPUS") or available_cpu_count()
+
+
+def autogluon_cpu_count() -> int:
+    return positive_int_env("GROUP5_AUTOGLUON_NUM_CPUS") or available_cpu_count()
+
+
+def autogluon_gpu_count() -> int:
+    override = nonnegative_int_env("GROUP5_AUTOGLUON_NUM_GPUS")
+    if override is not None:
+        return override
+    return detected_torch_gpu_count()
+
+
+def available_cpu_count() -> int:
+    override = positive_int_env("GROUP5_NUM_CPUS")
+    if override is not None:
+        return override
+
+    candidates = [os.cpu_count()]
+    if hasattr(os, "sched_getaffinity"):
+        try:
+            candidates.append(len(os.sched_getaffinity(0)))
+        except OSError:
+            pass
+    candidates.append(cgroup_cpu_count())
+
+    usable = [count for count in candidates if count is not None and count > 0]
+    return max(1, min(usable)) if usable else 1
+
+
+def cgroup_cpu_count() -> int | None:
+    cpu_max = Path("/sys/fs/cgroup/cpu.max")
+    if cpu_max.exists():
+        try:
+            quota, period = cpu_max.read_text(encoding="utf-8").strip().split()[:2]
+        except (OSError, ValueError):
+            quota, period = "max", "100000"
+        if quota != "max":
+            return quota_to_cpu_count(quota, period)
+
+    quota_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+    period_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+    if quota_path.exists() and period_path.exists():
+        try:
+            quota = quota_path.read_text(encoding="utf-8").strip()
+            period = period_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+        return quota_to_cpu_count(quota, period)
+    return None
+
+
+def quota_to_cpu_count(quota: str, period: str) -> int | None:
+    try:
+        quota_value = int(quota)
+        period_value = int(period)
+    except ValueError:
+        return None
+    if quota_value <= 0 or period_value <= 0:
+        return None
+    return max(1, math.floor(quota_value / period_value))
+
+
+def detected_torch_gpu_count() -> int:
+    try:
+        import torch
+    except Exception:
+        return 0
+    try:
+        return int(torch.cuda.device_count()) if torch.cuda.is_available() else 0
+    except Exception:
+        return 0
+
+
+def positive_int_env(name: str) -> int | None:
+    return int_env(name, minimum=1)
+
+
+def nonnegative_int_env(name: str) -> int | None:
+    return int_env(name, minimum=0)
+
+
+def int_env(name: str, minimum: int) -> int | None:
+    raw_value = os.environ.get(name)
+    if raw_value is None or not raw_value.strip():
+        return None
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer, got {raw_value!r}.") from exc
+    if value < minimum:
+        raise ValueError(f"{name} must be at least {minimum}, got {value}.")
+    return value
 
 
 def ensure_output_dirs() -> None:
@@ -923,7 +1068,7 @@ def make_preprocessor(frequency: str) -> ColumnTransformer:
         encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
     except TypeError:
         encoder = OneHotEncoder(handle_unknown="ignore", sparse=False)
-    return ColumnTransformer(
+    preprocessor = ColumnTransformer(
         transformers=[
             ("num", SimpleImputer(strategy="median"), numeric_cols),
             (
@@ -939,6 +1084,7 @@ def make_preprocessor(frequency: str) -> ColumnTransformer:
         ],
         remainder="drop",
     )
+    return preprocessor.set_output(transform="pandas")
 
 
 def make_tree_model(frequency: str) -> Pipeline:
@@ -957,7 +1103,7 @@ def make_tree_model(frequency: str) -> Pipeline:
                     colsample_bytree=0.85,
                     reg_lambda=1.0,
                     tree_method="hist",
-                    n_jobs=1,
+                    n_jobs=model_cpu_count(),
                     random_state=RANDOM_STATE,
                     verbosity=0,
                 ),
@@ -982,7 +1128,7 @@ def make_catboost_model(frequency: str) -> Pipeline:
                     random_seed=RANDOM_STATE,
                     allow_writing_files=False,
                     verbose=False,
-                    thread_count=1,
+                    thread_count=model_cpu_count(),
                 ),
             ),
         ]
@@ -1005,7 +1151,7 @@ def make_lightgbm_model(frequency: str) -> Pipeline:
                     colsample_bytree=0.85,
                     reg_lambda=1.0,
                     random_state=RANDOM_STATE,
-                    n_jobs=1,
+                    n_jobs=model_cpu_count(),
                     verbosity=-1,
                 ),
             ),
@@ -1030,7 +1176,8 @@ class AutoGluonTabularModel:
         self.predictor = None
         self.presets = os.environ.get("GROUP5_AUTOGLUON_PRESETS", "medium_quality")
         self.time_limit = autogluon_time_limit(frequency)
-        self.num_gpus = int(os.environ.get("GROUP5_AUTOGLUON_NUM_GPUS", "0"))
+        self.num_cpus = autogluon_cpu_count()
+        self.num_gpus = autogluon_gpu_count()
         self.verbosity = int(os.environ.get("GROUP5_AUTOGLUON_VERBOSITY", "0"))
 
     def fit(self, x: pd.DataFrame, y: pd.Series) -> "AutoGluonTabularModel":
@@ -1048,13 +1195,11 @@ class AutoGluonTabularModel:
         fit_kwargs: dict[str, Any] = {
             "train_data": train_data,
             "presets": self.presets,
+            "num_cpus": self.num_cpus,
             "num_gpus": self.num_gpus,
         }
         if self.time_limit > 0:
             fit_kwargs["time_limit"] = self.time_limit
-        num_cpus = os.environ.get("GROUP5_AUTOGLUON_NUM_CPUS")
-        if num_cpus:
-            fit_kwargs["num_cpus"] = int(num_cpus)
         predictor.fit(**fit_kwargs)
         self.predictor = predictor
         return self

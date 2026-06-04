@@ -41,6 +41,15 @@ This keeps the client-provided data files unchanged. It writes cleaned/intermedi
 
 AutoGluon is pinned to the latest stable `1.5.0` release checked for this project. The pipeline includes both `autogluon.tabular` and `autogluon.timeseries`.
 
+The pipeline auto-detects the usable CPU count from CPU quota and affinity, then passes that count to XGBoost, CatBoost, LightGBM, and AutoGluon where supported. If PyTorch can see CUDA GPUs, AutoGluon Tabular also receives the detected GPU count. Override these only when you want to pin resources manually:
+
+```bash
+export GROUP5_NUM_CPUS=6
+export GROUP5_MODEL_NUM_CPUS=6
+export GROUP5_AUTOGLUON_NUM_CPUS=6
+export GROUP5_AUTOGLUON_NUM_GPUS=0
+```
+
 Training defaults can be adjusted before running the pipeline with:
 
 ```bash
