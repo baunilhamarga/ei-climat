@@ -28,7 +28,7 @@ class EDATab(BaseTab):
             }
         )
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, width='stretch', theme=None)
 
         # Half-Hourly and Weekly Profiles Side-by-Side
         col1, col2 = st.columns(2)
@@ -49,7 +49,7 @@ class EDATab(BaseTab):
             }
         )
         StyleManager.style_plotly_chart(fig_half, st.session_state.theme_mode)
-        col1.plotly_chart(fig_half, width='stretch')
+        col1.plotly_chart(fig_half, width='stretch', theme=None)
 
         # Map weekday numbers (0=Monday, ..., 6=Sunday) to name strings
         day_names = {
@@ -83,7 +83,7 @@ class EDATab(BaseTab):
             categoryarray=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         )
         StyleManager.style_plotly_chart(fig_weekly, st.session_state.theme_mode)
-        col2.plotly_chart(fig_weekly, width='stretch')
+        col2.plotly_chart(fig_weekly, width='stretch', theme=None)
 
         # Temperature Scatter and Correlation Matrix Side-by-Side
         col3, col4 = st.columns(2)
@@ -101,7 +101,7 @@ class EDATab(BaseTab):
             }
         )
         StyleManager.style_plotly_chart(fig_temp, st.session_state.theme_mode)
-        col3.plotly_chart(fig_temp, width='stretch')
+        col3.plotly_chart(fig_temp, width='stretch', theme=None)
 
         # Correlation Matrix
         corr_cols = [
@@ -141,7 +141,7 @@ class EDATab(BaseTab):
             labels=dict(color="Correlation")
         )
         StyleManager.style_plotly_chart(fig_corr, st.session_state.theme_mode)
-        col4.plotly_chart(fig_corr, width='stretch')
+        col4.plotly_chart(fig_corr, width='stretch', theme=None)
 
         # Daily Autocorrelation (Full Width)
         autocorr = data["autocorr"][data["autocorr"]["Acorn"].isin(selected_acorns)]
@@ -159,4 +159,4 @@ class EDATab(BaseTab):
             }
         )
         StyleManager.style_plotly_chart(fig_autocorr, st.session_state.theme_mode)
-        st.plotly_chart(fig_autocorr, width='stretch')
+        st.plotly_chart(fig_autocorr, width='stretch', theme=None)

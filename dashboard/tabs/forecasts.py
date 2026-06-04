@@ -29,7 +29,7 @@ class ForecastsTab(BaseTab):
             }
         )
         StyleManager.style_plotly_chart(fig_half, st.session_state.theme_mode)
-        st.plotly_chart(fig_half, width='stretch')
+        st.plotly_chart(fig_half, width='stretch', theme=None)
 
         st.subheader("Medium-Term Forecast (1 Month)")
         fig_daily = px.line(
@@ -46,7 +46,7 @@ class ForecastsTab(BaseTab):
             }
         )
         StyleManager.style_plotly_chart(fig_daily, st.session_state.theme_mode)
-        st.plotly_chart(fig_daily, width='stretch')
+        st.plotly_chart(fig_daily, width='stretch', theme=None)
 
         self._render_model_comparison(data, selected_acorns)
 
@@ -150,7 +150,7 @@ class ForecastsTab(BaseTab):
             )
         )
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, width='stretch', theme=None)
 
         summary = self._test_metric_table(merged, config)
         display_summary = self._format_test_metric_table(summary)
@@ -204,7 +204,7 @@ class ForecastsTab(BaseTab):
             )
         )
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, width='stretch', theme=None)
 
         summary = self._forecast_metric_table(filtered, data["metrics"], frequency, config["prediction_col"])
         st.markdown(f'<div class="scrollable-table-wrapper">{summary.to_html(index=False)}</div>', unsafe_allow_html=True)
@@ -267,7 +267,7 @@ class ForecastsTab(BaseTab):
             )
         )
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, width='stretch', theme=None)
 
         summary = self._validation_metric_table(data["metrics"], selected_models, frequency)
         st.markdown(f'<div class="scrollable-table-wrapper">{summary.to_html(index=False)}</div>', unsafe_allow_html=True)
@@ -296,7 +296,7 @@ class ForecastsTab(BaseTab):
         baselines = {"previous_day", "previous_week", "seasonal_mean"}
         trained_color = "#4da4a9" if frequency == "half_hourly" else "#d49c5e"
 
-        metric_subset["model_type"] = metric_subset["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        metric_subset["model_type"] = metric_subset["model"].map(lambda m: "Baseline" if m in baselines else "Trained Model")
         metric_subset["model_display"] = metric_subset["model"].map(
             lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{self._model_label(m)}</span>'
             if m in baselines else self._model_label(m)
@@ -308,7 +308,7 @@ class ForecastsTab(BaseTab):
             y="rmse",
             color="model_type",
             color_discrete_map={
-                "System Baseline": "#c85a64",
+                "Baseline": "#c85a64",
                 "Trained Model": trained_color
             },
             title="Validation RMSE for Displayed Models",
@@ -320,7 +320,7 @@ class ForecastsTab(BaseTab):
         )
         fig_rmse.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse, st.session_state.theme_mode)
-        st.plotly_chart(fig_rmse, width='stretch')
+        st.plotly_chart(fig_rmse, width='stretch', theme=None)
 
     def _render_test_rmse_chart(self, summary: pd.DataFrame, frequency: str) -> None:
         if summary.empty:
@@ -332,7 +332,7 @@ class ForecastsTab(BaseTab):
         trained_color = "#4da4a9" if frequency == "half_hourly" else "#d49c5e"
 
         chart_df = summary.copy()
-        chart_df["model_type"] = chart_df["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        chart_df["model_type"] = chart_df["model"].map(lambda m: "Baseline" if m in baselines else "Trained Model")
         chart_df["model_display"] = chart_df["model"].map(
             lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{self._model_label(m)}</span>'
             if m in baselines else self._model_label(m)
@@ -344,7 +344,7 @@ class ForecastsTab(BaseTab):
             y="rmse",
             color="model_type",
             color_discrete_map={
-                "System Baseline": "#c85a64",
+                "Baseline": "#c85a64",
                 "Trained Model": trained_color
             },
             title="Final Test RMSE for Displayed Models",
@@ -356,7 +356,7 @@ class ForecastsTab(BaseTab):
         )
         fig_rmse.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse, st.session_state.theme_mode)
-        st.plotly_chart(fig_rmse, width='stretch')
+        st.plotly_chart(fig_rmse, width='stretch', theme=None)
 
     def _forecast_config(self, frequency: str) -> dict[str, str]:
         return {

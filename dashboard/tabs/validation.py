@@ -38,7 +38,7 @@ class ValidationTab(BaseTab):
 
         # Half-Hourly Chart
         overall_half = overall_metrics[overall_metrics["frequency"] == "half_hourly"].copy()
-        overall_half["model_type"] = overall_half["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        overall_half["model_type"] = overall_half["model"].map(lambda m: "Baseline" if m in baselines else "Trained Model")
         overall_half["model_display"] = overall_half["model"].map(
             lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{StyleManager.MODEL_MAP.get(m, m)}</span>'
             if m in baselines else StyleManager.MODEL_MAP.get(m, m)
@@ -50,7 +50,7 @@ class ValidationTab(BaseTab):
             y="rmse",
             color="model_type",
             color_discrete_map={
-                "System Baseline": "#c85a64",
+                "Baseline": "#c85a64",
                 "Trained Model": "#4da4a9"
             },
             title="Overall Half-Hourly Validation RMSE",
@@ -62,11 +62,11 @@ class ValidationTab(BaseTab):
         )
         fig_half.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_half, st.session_state.theme_mode)
-        overall_cols[0].plotly_chart(fig_half, width='stretch')
+        overall_cols[0].plotly_chart(fig_half, width='stretch', theme=None)
         
         # Daily Chart
         overall_daily = overall_metrics[overall_metrics["frequency"] == "daily"].copy()
-        overall_daily["model_type"] = overall_daily["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        overall_daily["model_type"] = overall_daily["model"].map(lambda m: "Baseline" if m in baselines else "Trained Model")
         overall_daily["model_display"] = overall_daily["model"].map(
             lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{StyleManager.MODEL_MAP.get(m, m)}</span>'
             if m in baselines else StyleManager.MODEL_MAP.get(m, m)
@@ -78,7 +78,7 @@ class ValidationTab(BaseTab):
             y="rmse",
             color="model_type",
             color_discrete_map={
-                "System Baseline": "#c85a64",
+                "Baseline": "#c85a64",
                 "Trained Model": "#d49c5e"
             },
             title="Overall Daily Validation RMSE",
@@ -90,7 +90,7 @@ class ValidationTab(BaseTab):
         )
         fig_daily.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_daily, st.session_state.theme_mode)
-        overall_cols[1].plotly_chart(fig_daily, width='stretch')
+        overall_cols[1].plotly_chart(fig_daily, width='stretch', theme=None)
 
         st.subheader("Interactive Predictions Comparison")
         frequency = st.radio(
@@ -155,4 +155,4 @@ class ValidationTab(BaseTab):
             }
         )
         StyleManager.style_plotly_chart(fig_line, st.session_state.theme_mode)
-        st.plotly_chart(fig_line, width='stretch')
+        st.plotly_chart(fig_line, width='stretch', theme=None)

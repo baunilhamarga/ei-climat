@@ -50,4 +50,4 @@ class ComparisonTab(BaseTab):
         )
         fig_bar.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_bar, st.session_state.theme_mode)
-        st.plotly_chart(fig_bar, width='stretch')
+        st.plotly_chart(fig_bar, width='stretch', theme=None)

@@ -781,6 +781,7 @@ class StyleManager:
             ),
             legend=dict(
                 font=dict(color=text_color),
+                title=dict(font=dict(color=text_color)),
                 bgcolor="rgba(0,0,0,0)"
             ),
             title=dict(

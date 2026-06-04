@@ -79,7 +79,7 @@ class OverviewTab(BaseTab):
                 }
             )
             StyleManager.style_plotly_chart(fig_trend, st.session_state.theme_mode)
-            st.plotly_chart(fig_trend, width='stretch')
+            st.plotly_chart(fig_trend, width='stretch', theme=None)
         else:
             st.warning("No data selected to display trend.")
 
@@ -93,7 +93,7 @@ class OverviewTab(BaseTab):
 
         # Half-Hourly RMSE Chart
         metric_half = metric_subset[metric_subset["frequency"] == "half_hourly"].copy()
-        metric_half["model_type"] = metric_half["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        metric_half["model_type"] = metric_half["model"].map(lambda m: "Baseline" if m in baselines else "Trained Model")
         metric_half["model_display"] = metric_half["model"].map(
             lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{StyleManager.MODEL_MAP.get(m, m)}</span>'
             if m in baselines else StyleManager.MODEL_MAP.get(m, m)
@@ -105,7 +105,7 @@ class OverviewTab(BaseTab):
             y="rmse",
             color="model_type",
             color_discrete_map={
-                "System Baseline": "#c85a64",
+                "Baseline": "#c85a64",
                 "Trained Model": "#4da4a9"
             },
             title="Half-Hourly Validation RMSE by model",
@@ -117,11 +117,11 @@ class OverviewTab(BaseTab):
         )
         fig_rmse_half.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse_half, st.session_state.theme_mode)
-        rmse_cols[0].plotly_chart(fig_rmse_half, width='stretch')
+        rmse_cols[0].plotly_chart(fig_rmse_half, width='stretch', theme=None)
 
         # Daily RMSE Chart
         metric_daily = metric_subset[metric_subset["frequency"] == "daily"].copy()
-        metric_daily["model_type"] = metric_daily["model"].map(lambda m: "System Baseline" if m in baselines else "Trained Model")
+        metric_daily["model_type"] = metric_daily["model"].map(lambda m: "Baseline" if m in baselines else "Trained Model")
         metric_daily["model_display"] = metric_daily["model"].map(
             lambda m: f'<span style="color: {baseline_text_color}; font-weight: bold;">{StyleManager.MODEL_MAP.get(m, m)}</span>'
             if m in baselines else StyleManager.MODEL_MAP.get(m, m)
@@ -133,7 +133,7 @@ class OverviewTab(BaseTab):
             y="rmse",
             color="model_type",
             color_discrete_map={
-                "System Baseline": "#c85a64",
+                "Baseline": "#c85a64",
                 "Trained Model": "#d49c5e"
             },
             title="Daily Validation RMSE by model",
@@ -145,4 +145,4 @@ class OverviewTab(BaseTab):
         )
         fig_rmse_daily.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse_daily, st.session_state.theme_mode)
-        rmse_cols[1].plotly_chart(fig_rmse_daily, width='stretch')
+        rmse_cols[1].plotly_chart(fig_rmse_daily, width='stretch', theme=None)
