@@ -3,12 +3,14 @@
   "daily_rows": 96,
   "parquet_available": true,
   "selected_half_hourly_model": "lightgbm",
-  "selected_daily_model": "xgboost",
+  "selected_daily_model": "xgboost_by_acorn",
   "active_trainable_models": [
     "ridge",
     "xgboost",
+    "xgboost_by_acorn",
     "catboost",
     "lightgbm",
+    "stack_regressor",
     "autogluon",
     "autogluon_timeseries"
   ],
@@ -21,31 +23,35 @@
   "short_term_model_paths": {
     "ridge": "/root/ei-climat/models/short_term/group5_half_hourly_ridge.joblib",
     "xgboost": "/root/ei-climat/models/short_term/group5_half_hourly_xgboost.joblib",
+    "xgboost_by_acorn": "/root/ei-climat/models/short_term/group5_half_hourly_xgboost_by_acorn.joblib",
     "catboost": "/root/ei-climat/models/short_term/group5_half_hourly_catboost.joblib",
     "lightgbm": "/root/ei-climat/models/short_term/group5_half_hourly_lightgbm.joblib",
+    "stack_regressor": "/root/ei-climat/models/short_term/group5_half_hourly_stack_regressor.joblib",
     "autogluon": "/root/ei-climat/models/short_term/group5_half_hourly_autogluon",
     "autogluon_timeseries": "/root/ei-climat/models/short_term/group5_half_hourly_autogluon_timeseries"
   },
   "medium_term_model_paths": {
     "ridge": "/root/ei-climat/models/medium_term/group5_daily_ridge.joblib",
     "xgboost": "/root/ei-climat/models/medium_term/group5_daily_xgboost.joblib",
+    "xgboost_by_acorn": "/root/ei-climat/models/medium_term/group5_daily_xgboost_by_acorn.joblib",
     "catboost": "/root/ei-climat/models/medium_term/group5_daily_catboost.joblib",
     "lightgbm": "/root/ei-climat/models/medium_term/group5_daily_lightgbm.joblib",
+    "stack_regressor": "/root/ei-climat/models/medium_term/group5_daily_stack_regressor.joblib",
     "autogluon": "/root/ei-climat/models/medium_term/group5_daily_autogluon",
     "autogluon_timeseries": "/root/ei-climat/models/medium_term/group5_daily_autogluon_timeseries"
   },
   "best_half_hourly_overall": {
     "model": "lightgbm",
-    "rmse": 0.007371905194118011,
+    "rmse": 0.007371905194118,
     "n": 4032
   },
   "best_daily_overall": {
-    "model": "xgboost",
-    "rmse": 0.3531511196991238,
+    "model": "xgboost_by_acorn",
+    "rmse": 0.352796423260022,
     "n": 93
   },
-  "half_hourly_all_model_rows": 1728,
-  "daily_all_model_rows": 576,
+  "half_hourly_all_model_rows": 2304,
+  "daily_all_model_rows": 768,
   "short_term_all_model_prediction_path": "/root/ei-climat/outputs/group5/predictions/group_5_half_hourly_all_models_predict.csv",
   "medium_term_all_model_prediction_path": "/root/ei-climat/outputs/group5/predictions/group_5_daily_all_models_predict.csv"
 }

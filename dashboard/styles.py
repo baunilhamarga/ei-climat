@@ -17,9 +17,11 @@ class StyleManager:
 
     MODEL_MAP = {
         "xgboost": "XGBoost",
+        "xgboost_by_acorn": "XGBoost by ACORN",
         "ridge": "Ridge Regression",
         "catboost": "CatBoost",
         "lightgbm": "LightGBM",
+        "stack_regressor": "Stack Regressor",
         "autogluon": "AutoGluon Tabular",
         "autogluon_timeseries": "AutoGluon TimeSeries",
         "previous_day": "Baseline: Previous Day",

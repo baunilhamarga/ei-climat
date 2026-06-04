@@ -64,10 +64,10 @@ export GROUP5_AUTOGLUON_TS_DAILY_TIME_LIMIT=120
 To run only a subset of trainable models, set:
 
 ```bash
-export GROUP5_TRAINABLE_MODELS=ridge,xgboost,catboost,lightgbm
+export GROUP5_TRAINABLE_MODELS=ridge,xgboost,xgboost_by_acorn,catboost,lightgbm,stack_regressor
 ```
 
-This is useful on Python environments where AutoGluon is not available.
+This is useful on Python environments where AutoGluon is not available. The `xgboost_by_acorn` option trains three isolated XGBoost models, one per ACORN segment, while the regular `xgboost` option trains one pooled model with ACORN as a categorical feature. The `stack_regressor` option uses ridge, XGBoost, and LightGBM base learners with a ridge meta-model.
 
 The TimeSeries model is compared on the same chronological validation subset and the same RMSE metric as the other models. It uses the target history plus known future calendar, holiday, and weather covariates instead of the manual lag/rolling feature table.
 

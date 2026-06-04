@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import StackingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
@@ -125,11 +126,15 @@ AUTOGLUON_TIMESERIES_MODEL = "autogluon_timeseries"
 AUTOGLUON_MODEL_NAMES = (AUTOGLUON_TABULAR_MODEL, AUTOGLUON_TIMESERIES_MODEL)
 CATBOOST_MODEL = "catboost"
 LIGHTGBM_MODEL = "lightgbm"
+XGBOOST_BY_ACORN_MODEL = "xgboost_by_acorn"
+STACK_REGRESSOR_MODEL = "stack_regressor"
 TRAINABLE_MODEL_NAMES = (
     "ridge",
     "xgboost",
+    XGBOOST_BY_ACORN_MODEL,
     CATBOOST_MODEL,
     LIGHTGBM_MODEL,
+    STACK_REGRESSOR_MODEL,
     AUTOGLUON_TABULAR_MODEL,
     AUTOGLUON_TIMESERIES_MODEL,
 )
@@ -1129,6 +1134,46 @@ def make_tree_model(frequency: str) -> Pipeline:
     )
 
 
+class AcornIsolatedXGBoostModel:
+    """Fits one independent XGBoost pipeline per ACORN segment."""
+
+    def __init__(self, frequency: str):
+        self.frequency = frequency
+        self.models: dict[str, Pipeline] = {}
+
+    def fit(self, x: pd.DataFrame, y: pd.Series) -> "AcornIsolatedXGBoostModel":
+        if "Acorn" not in x.columns:
+            raise ValueError("Acorn-isolated XGBoost requires an Acorn feature column.")
+        y_series = pd.Series(y, index=x.index)
+        self.models = {}
+        for acorn in ACORNS:
+            mask = x["Acorn"] == acorn
+            if not mask.any():
+                raise ValueError(f"No training rows found for {acorn} in Acorn-isolated XGBoost.")
+            model = make_tree_model(self.frequency)
+            model.fit(x.loc[mask], y_series.loc[mask])
+            self.models[acorn] = model
+        return self
+
+    def predict(self, x: pd.DataFrame) -> np.ndarray:
+        if "Acorn" not in x.columns:
+            raise ValueError("Acorn-isolated XGBoost requires an Acorn feature column.")
+        if not self.models:
+            raise ValueError("Acorn-isolated XGBoost has not been fitted.")
+        predictions = pd.Series(index=x.index, dtype=float)
+        unknown_acorns = sorted(set(x["Acorn"].dropna().unique()) - set(self.models))
+        if unknown_acorns:
+            raise ValueError(f"No Acorn-isolated XGBoost model was fitted for {unknown_acorns}.")
+        for acorn, model in self.models.items():
+            mask = x["Acorn"] == acorn
+            if mask.any():
+                predictions.loc[mask] = model.predict(x.loc[mask])
+        if predictions.isna().any():
+            missing = int(predictions.isna().sum())
+            raise ValueError(f"Acorn-isolated XGBoost could not produce {missing} predictions.")
+        return predictions.to_numpy(dtype=float)
+
+
 def make_catboost_model(frequency: str) -> Pipeline:
     return Pipeline(
         [
@@ -1173,6 +1218,20 @@ def make_lightgbm_model(frequency: str) -> Pipeline:
                 ),
             ),
         ]
+    )
+
+
+def make_stack_regressor_model(frequency: str) -> StackingRegressor:
+    return StackingRegressor(
+        estimators=[
+            ("ridge", make_linear_model(frequency)),
+            ("xgboost", make_tree_model(frequency)),
+            ("lightgbm", make_lightgbm_model(frequency)),
+        ],
+        final_estimator=Ridge(alpha=1.0),
+        cv=3,
+        n_jobs=1,
+        passthrough=False,
     )
 
 
@@ -1405,10 +1464,14 @@ def make_model(
 ) -> Any:
     if model_name == "xgboost":
         return make_tree_model(frequency)
+    if model_name == XGBOOST_BY_ACORN_MODEL:
+        return AcornIsolatedXGBoostModel(frequency)
     if model_name == CATBOOST_MODEL:
         return make_catboost_model(frequency)
     if model_name == LIGHTGBM_MODEL:
         return make_lightgbm_model(frequency)
+    if model_name == STACK_REGRESSOR_MODEL:
+        return make_stack_regressor_model(frequency)
     if model_name == "ridge":
         return make_linear_model(frequency)
     if model_name == AUTOGLUON_TABULAR_MODEL:
@@ -2059,8 +2122,10 @@ The compared models are:
 - `seasonal_mean`: historical mean by ACORN and calendar slot.
 - `ridge`: regularized linear regression.
 - `xgboost`: gradient-boosted tree regression using calendar, weather, holiday, lag, and rolling features.
+- `xgboost_by_acorn`: three isolated XGBoost models, one per ACORN, each trained only on that ACORN history.
 - `catboost`: CatBoost gradient boosting regression on the same engineered feature table.
 - `lightgbm`: LightGBM gradient boosting regression on the same engineered feature table.
+- `stack_regressor`: sklearn StackingRegressor using ridge, XGBoost, and LightGBM base learners with a ridge meta-model.
 - `autogluon`: AutoGluon TabularPredictor AutoML regression on the same engineered feature table.
 - `autogluon_timeseries`: AutoGluon TimeSeriesPredictor using the target history plus known future calendar, holiday, and weather covariates.
 
