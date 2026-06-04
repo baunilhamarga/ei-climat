@@ -100,7 +100,7 @@ class ForecastDashboardApp:
             st.stop()
 
         # Header layout with Title and the Acorn selector in columns
-        col1, col2 = st.columns([2, 3], vertical_alignment="bottom")
+        col1, col2 = st.columns([2, 3], vertical_alignment="center")
         with col1:
             st.title("UK Household Energy Forecasts - Group 5")
         with col2:

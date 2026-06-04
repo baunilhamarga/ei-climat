@@ -47,10 +47,65 @@ class StyleManager:
     }
 
     /* Force standard headers, labels, and text containers to inherit theme text and Outfit font */
-    h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p, [data-testid="stWidgetLabel"] p, label, p, li, table, th, td {
+    h1, h2, h3, h4, h5, h6, [data-testid="stWidgetLabel"] p, label, table, th, td {
         font-family: 'Outfit', sans-serif !important;
         color: var(--theme-text) !important;
         transition: color 0.3s ease;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        letter-spacing: -0.02em !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    /* Modern text styling for paragraphs and list items */
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li {
+        font-family: 'Outfit', sans-serif !important;
+        font-size: 1.02rem !important;
+        line-height: 1.7 !important;
+        font-weight: 300 !important;
+        color: var(--kpi-sub) !important;
+        letter-spacing: 0.01em !important;
+        transition: color 0.3s ease;
+        margin-bottom: 1.0rem !important;
+    }
+
+    [data-testid="stMarkdownContainer"] p strong,
+    [data-testid="stMarkdownContainer"] li strong {
+        font-weight: 600 !important;
+        color: var(--theme-text) !important;
+    }
+
+    /* Premium Glassmorphic Intro Panels */
+    .intro-panel {
+        background: linear-gradient(135deg, rgba(77, 164, 169, 0.04) 0%, rgba(212, 156, 94, 0.04) 100%) !important;
+        border: 1px solid var(--kpi-border) !important;
+        border-left: 4px solid #4da4a9 !important;
+        border-radius: 12px !important;
+        padding: 1.25rem 1.5rem !important;
+        margin-top: 0.5rem !important;
+        margin-bottom: 1.75rem !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .intro-panel:hover {
+        border-color: rgba(77, 164, 169, 0.4) !important;
+        border-left-color: #4da4a9 !important;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .intro-panel p {
+        font-family: 'Outfit', sans-serif !important;
+        font-size: 1.05rem !important;
+        line-height: 1.75 !important;
+        font-weight: 300 !important;
+        color: var(--theme-text) !important;
+        margin: 0 !important;
     }
 
     /* Keep Streamlit's built-in Material Symbols icons from rendering as raw text names. */
@@ -88,6 +143,13 @@ class StyleManager:
         background-color: transparent !important;
         color: var(--theme-text) !important;
         font-family: 'Outfit', sans-serif !important;
+    }
+
+    div[data-testid="stExpander"] summary p,
+    div[data-testid="stExpander"] summary span {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: inherit !important;
     }
 
     /* Reduce main container margins to let contents extend closer to the screen edges */
@@ -200,7 +262,9 @@ class StyleManager:
     }
 
     .stTabs [data-baseweb="tab"] {
-        height: 45px;
+        height: 48px;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
         white-space: pre-wrap;
         background-color: var(--tab-bg) !important;
         border-radius: 8px 8px 0px 0px;
@@ -208,7 +272,16 @@ class StyleManager:
         border-bottom: none;
         color: var(--tab-text) !important;
         transition: all 0.2s ease-in-out;
-        padding: 0 16px;
+        padding: 0 20px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .stTabs [data-baseweb="tab"] * {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1 !important;
     }
 
     .stTabs [data-baseweb="tab"]:hover {
@@ -223,28 +296,38 @@ class StyleManager:
         font-weight: 600 !important;
     }
 
-    /* HeroUI style chips for ACORN selection pills */
-    /* Force the Streamlit column holding the filter to align to the right */
     div[data-testid="column"]:has(.st-key-acorn_filter),
-    div.element-container:has(.st-key-acorn_filter) {
+    div[data-testid="column"]:has(.st-key-theme_toggle),
+    div[data-testid="column"]:has(.st-key-acorn_filter) div[data-testid="stVerticalBlock"],
+    div[data-testid="column"]:has(.st-key-theme_toggle) div[data-testid="stVerticalBlock"],
+    div.element-container:has(.st-key-acorn_filter),
+    div.element-container:has(.st-key-theme_toggle) {
         display: flex !important;
         flex-direction: column !important;
         align-items: flex-end !important;
         justify-content: flex-end !important;
         text-align: right !important;
         width: 100% !important;
+        margin: 0 !important;
+        margin-bottom: 0px !important;
+        padding: 0 !important;
+        padding-bottom: 0px !important;
+        gap: 0px !important;
     }
 
     .st-key-acorn_filter {
+        margin: 0 !important;
         margin-left: auto !important;
         margin-right: 0 !important;
+        margin-bottom: 0px !important;
         width: fit-content !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: flex-end !important;
         justify-content: flex-end !important;
         text-align: right !important;
-        padding-top: 0.5rem;
+        padding: 0 !important;
+        padding-top: 0.5rem !important;
     }
 
     /* Force pills widget wrappers to layout label and buttons vertically */
@@ -260,6 +343,7 @@ class StyleManager:
     .st-key-acorn_filter [role="group"] {
         margin-left: auto !important;
         margin-right: 0 !important;
+        margin-bottom: 0px !important;
         display: flex !important;
         justify-content: flex-end !important;
         align-items: center !important;
@@ -289,9 +373,20 @@ class StyleManager:
     .st-key-acorn_filter [data-testid="stBaseButton-pills"] {
         border-radius: 9999px !important;
         font-weight: 600 !important;
+        font-size: 0.92rem !important;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        padding: 0.35rem 1rem !important;
-        height: auto !important;
+        padding: 0 1.25rem !important;
+        height: 38px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .st-key-acorn_filter [data-testid="stBaseButton-pillsActive"] *,
+    .st-key-acorn_filter [data-testid="stBaseButton-pills"] * {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1 !important;
     }
 
     /* Hover effect for all buttons */
@@ -377,11 +472,17 @@ class StyleManager:
         width: 100% !important;
     }
 
-    /* Force the filter column to grow and the toggle column to shrink to content */
+    /* Force the filter column to grow and the toggle column to shrink to content, and align them flush at the bottom */
     div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(.st-key-theme_toggle) > div[data-testid="column"]:nth-child(1) {
         width: auto !important;
         flex-grow: 1 !important;
         flex-shrink: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-end !important;
+        align-items: flex-end !important;
+        margin-bottom: 0px !important;
+        padding-bottom: 0px !important;
     }
 
     div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(.st-key-theme_toggle) > div[data-testid="column"]:nth-child(2) {
@@ -389,10 +490,17 @@ class StyleManager:
         flex-grow: 0 !important;
         flex-shrink: 0 !important;
         margin-left: 2.5rem !important; /* Increased space between filter pills and toggle button */
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-end !important;
+        align-items: flex-end !important;
+        margin-bottom: 0px !important;
+        padding-bottom: 0px !important;
     }
 
     .st-key-theme_toggle {
         margin: 0 !important;
+        margin-bottom: 0px !important;
         display: flex !important;
         justify-content: flex-end !important;
         align-items: flex-end !important;
@@ -400,24 +508,30 @@ class StyleManager:
 
     .st-key-theme_toggle button {
         border-radius: 50% !important;
-        width: 32px !important;
-        height: 32px !important;
-        min-width: 32px !important;
-        max-width: 32px !important;
-        min-height: 32px !important;
-        max-height: 32px !important;
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
+        min-height: 38px !important;
+        max-height: 38px !important;
         padding: 0 !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        line-height: 30px !important;
-        font-size: 0.95rem !important;
+        line-height: 36px !important;
+        font-size: 1.05rem !important;
         background-color: var(--kpi-bg) !important;
         border: 1px solid var(--kpi-border) !important;
         color: var(--theme-text) !important;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
         transition: all 0.2s ease-in-out !important;
         margin-bottom: 0px !important;
+    }
+
+    .st-key-theme_toggle button * {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1 !important;
     }
 
     .st-key-theme_toggle button:hover {
@@ -654,6 +768,107 @@ class StyleManager:
         background-color: var(--table-hover-bg) !important;
     }
 
+    /* Premium Member Cards & Team Layout */
+    .member-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+        margin-top: 0.5rem !important;
+        width: 100% !important;
+    }
+
+    .member-card {
+        background: var(--kpi-bg) !important;
+        border: 1px solid var(--kpi-border) !important;
+        border-radius: 10px !important;
+        padding: 0.75rem 1rem !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.75rem !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .member-card:hover {
+        transform: translateY(-2px) !important;
+        border-color: rgba(77, 164, 169, 0.4) !important;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .member-avatar {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #4da4a9 0%, #d49c5e 100%) !important;
+        color: #ffffff !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        flex-shrink: 0 !important;
+    }
+
+    .member-info {
+        display: flex !important;
+        flex-direction: column !important;
+        flex-grow: 1 !important;
+        line-height: 1.2 !important;
+    }
+
+    .member-name {
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        color: var(--theme-text) !important;
+    }
+
+    .member-detail {
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 300 !important;
+        font-size: 0.8rem !important;
+        color: var(--kpi-sub) !important;
+        margin-top: 0.15rem !important;
+    }
+
+    /* Premium Repository Badge */
+    .repo-badge-container {
+        margin-top: 0.75rem !important;
+        margin-bottom: 1.25rem !important;
+        width: fit-content !important;
+    }
+
+    .repo-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.6rem !important;
+        background: var(--kpi-bg) !important;
+        border: 1px solid var(--kpi-border) !important;
+        border-radius: 20px !important;
+        padding: 0.45rem 1.1rem !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        color: var(--theme-text) !important;
+        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .repo-badge:hover {
+        border-color: #4da4a9 !important;
+        background: rgba(77, 164, 169, 0.05) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(77, 164, 169, 0.15) !important;
+    }
+
+    .repo-badge span.material-symbols-rounded {
+        font-size: 1.1rem !important;
+        color: #4da4a9 !important;
+        line-height: 1 !important;
+    }
     """
 
     @classmethod
@@ -850,6 +1065,29 @@ class StyleManager:
             tickfont=dict(color=text_color),
             title_font=dict(color=text_color)
         )
+        
+        # Dynamically adjust relative bar width based on number of active categories to keep them visually pleasing
+        x_values = []
+        for trace in fig.data:
+            if getattr(trace, "type", None) == "bar" and hasattr(trace, "x") and trace.x is not None:
+                try:
+                    x_values.extend(list(trace.x))
+                except Exception:
+                    pass
+        
+        if x_values:
+            num_categories = len(set(x_values))
+            if num_categories == 1:
+                bar_width = 0.15
+            elif num_categories == 2:
+                bar_width = 0.25
+            elif num_categories == 3:
+                bar_width = 0.35
+            else:
+                bar_width = 0.45
+            fig.update_traces(width=bar_width, selector=dict(type="bar"))
+        else:
+            fig.update_traces(width=0.4, selector=dict(type="bar"))
 
     @staticmethod
     def render_kpi_card(label: str, value: str, subtext: str = "") -> str:

@@ -14,10 +14,13 @@ class EDATab(BaseTab):
         filtered_daily = daily_enriched[daily_enriched["Acorn"].isin(selected_acorns)]
 
         st.markdown(
-            "This tab checks the structure of the consumption data before modeling: long-term level, "
-            "within-day and weekly rhythms, weather sensitivity, autocorrelation, and differences between "
-            "the assigned ACORN segments. These patterns explain why the forecasting models use calendar, "
-            "weather, lag, and rolling features."
+            '<div class="intro-panel">'
+            '<p>This tab checks the structure of the consumption data before modeling: long-term level, '
+            'within-day and weekly rhythms, weather sensitivity, autocorrelation, and differences between '
+            'the assigned ACORN segments. These patterns explain why the forecasting models use calendar, '
+            'weather, lag, and rolling features.</p>'
+            '</div>',
+            unsafe_allow_html=True,
         )
 
         st.subheader("Historical Consumption Levels")
@@ -231,34 +234,66 @@ class EDATab(BaseTab):
             "forecast_mean", ascending=False
         )
 
-        display_summary = summary.copy()
-        for col in [
-            "historical_mean",
-            "historical_min",
-            "historical_max",
-            "forecast_mean",
-            "forecast_min",
-            "forecast_max",
-        ]:
-            display_summary[col] = display_summary[col].map(lambda value: f"{value:.3f}" if pd.notna(value) else "n/a")
-        display_summary = display_summary.rename(
-            columns={
-                "Acorn": "ACORN Segment",
-                "historical_mean": "Historical Mean Daily kWh",
-                "historical_min": "Historical Min Daily kWh",
-                "historical_max": "Historical Max Daily kWh",
-                "forecast_mean": "Forecast Mean Daily kWh",
-                "forecast_min": "Forecast Min Daily kWh",
-                "forecast_max": "Forecast Max Daily kWh",
-            }
+        summary_rows_html = ""
+        for _, row in summary.iterrows():
+            acorn = row["Acorn"]
+            hist_mean = f"{row['historical_mean']:.3f}" if pd.notna(row['historical_mean']) else "n/a"
+            hist_min = f"{row['historical_min']:.3f}" if pd.notna(row['historical_min']) else "n/a"
+            hist_max = f"{row['historical_max']:.3f}" if pd.notna(row['historical_max']) else "n/a"
+            
+            fore_mean = f"{row['forecast_mean']:.3f}" if pd.notna(row['forecast_mean']) else "n/a"
+            fore_min = f"{row['forecast_min']:.3f}" if pd.notna(row['forecast_min']) else "n/a"
+            fore_max = f"{row['forecast_max']:.3f}" if pd.notna(row['forecast_max']) else "n/a"
+            
+            if acorn == "ACORN-E":
+                badge_bg = "rgba(77, 164, 169, 0.12)"
+                badge_text_color = "#4da4a9"
+                border_color = "rgba(77, 164, 169, 0.25)"
+            elif acorn == "ACORN-F":
+                badge_bg = "rgba(212, 156, 94, 0.12)"
+                badge_text_color = "#d49c5e"
+                border_color = "rgba(212, 156, 94, 0.25)"
+            else:
+                badge_bg = "rgba(200, 90, 100, 0.12)"
+                badge_text_color = "#c85a64"
+                border_color = "rgba(200, 90, 100, 0.25)"
+                
+            summary_rows_html += (
+                f'<tr>'
+                f'<td>'
+                f'<span style="display: inline-block; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; background: {badge_bg}; color: {badge_text_color}; border: 1px solid {border_color};">{acorn}</span>'
+                f'</td>'
+                f'<td>'
+                f'<div style="font-weight: 600; font-size: 0.95rem; color: var(--theme-text);">{hist_mean} kWh</div>'
+                f'<div style="font-size: 0.82rem; color: var(--kpi-sub); margin-top: 2px;">Range: {hist_min} – {hist_max}</div>'
+                f'</td>'
+                f'<td>'
+                f'<div style="font-weight: 600; font-size: 0.95rem; color: var(--theme-text);">{fore_mean} kWh</div>'
+                f'<div style="font-size: 0.82rem; color: var(--kpi-sub); margin-top: 2px;">Range: {fore_min} – {fore_max}</div>'
+                f'</td>'
+                f'</tr>'
+            )
+
+        summary_html = (
+            '<div class="scrollable-table-wrapper">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead>'
+            '<tr>'
+            '<th>ACORN Segment</th>'
+            '<th>Historical Daily Usage</th>'
+            '<th>Forecasted Daily Usage</th>'
+            '</tr>'
+            '</thead>'
+            '<tbody>'
+            f'{summary_rows_html}'
+            '</tbody>'
+            '</table>'
+            '</div>'
         )
 
         col1, col2 = st.columns([3, 2], vertical_alignment="center")
         with col1:
-            st.markdown(
-                f'<div class="scrollable-table-wrapper">{display_summary.to_html(index=False)}</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(summary_html, unsafe_allow_html=True)
         with col2:
             fig_bar = px.bar(
                 summary,
@@ -349,11 +384,53 @@ class EDATab(BaseTab):
                 "Rationale": "Yesterday, last week, two weeks ago, and recent rolling means summarize persistence, weekly recurrence, and short-term trend.",
             },
         ]
-        tabular_df = pd.DataFrame(tabular_rows)
-        st.markdown(
-            f'<div class="scrollable-table-wrapper">{tabular_df.to_html(index=False)}</div>',
-            unsafe_allow_html=True,
+        tabular_rows_html = ""
+        for row in tabular_rows:
+            freq = row["Frequency"]
+            feat_group = row["Feature group"]
+            cols = row["Columns"]
+            rationale = row["Rationale"]
+            
+            if freq.lower().startswith("half"):
+                freq_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.78rem; background: rgba(77, 164, 169, 0.12); color: #4da4a9; border: 1px solid rgba(77, 164, 169, 0.25);">Half-Hourly</span>'
+            else:
+                freq_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.78rem; background: rgba(212, 156, 94, 0.12); color: #d49c5e; border: 1px solid rgba(212, 156, 94, 0.25);">Daily</span>'
+                
+            col_badges = ", ".join([f'<code style="font-family: monospace; font-size: 0.8rem; background: var(--kpi-border); color: var(--theme-text); padding: 2px 6px; border-radius: 4px; font-weight: 500;">{c.strip()}</code>' for c in cols.split(",")])
+            
+            tabular_rows_html += (
+                f'<tr>'
+                f'<td style="vertical-align: top; padding: 12px 14px;">{freq_badge}</td>'
+                f'<td style="vertical-align: top; padding: 12px 14px;">'
+                f'<div style="font-weight: 600; font-size: 0.92rem; color: var(--theme-text);">{feat_group}</div>'
+                f'</td>'
+                f'<td style="vertical-align: top; padding: 12px 14px;">'
+                f'<div style="line-height: 1.6; margin-bottom: 4px;">{col_badges}</div>'
+                f'</td>'
+                f'<td style="vertical-align: top; padding: 12px 14px;">'
+                f'<div style="font-size: 0.85rem; color: var(--kpi-sub); line-height: 1.45;">{rationale}</div>'
+                f'</td>'
+                f'</tr>'
+            )
+
+        tabular_html = (
+            '<div class="scrollable-table-wrapper">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead>'
+            '<tr>'
+            '<th style="width: 15%;">Frequency</th>'
+            '<th style="width: 20%;">Feature Group</th>'
+            '<th style="width: 35%;">Columns</th>'
+            '<th style="width: 30%;">Rationale</th>'
+            '</tr>'
+            '</thead>'
+            '<tbody>'
+            f'{tabular_rows_html}'
+            '</tbody>'
+            '</table>'
+            '</div>'
         )
+        st.markdown(tabular_html, unsafe_allow_html=True)
 
         st.markdown(
             "AutoGluon TimeSeries is handled separately. It receives each ACORN as an item series, the "
@@ -387,11 +464,53 @@ class EDATab(BaseTab):
                 "Rationale": "These known future variables provide calendar and weather context for the one-month daily forecast.",
             },
         ]
-        ts_df = pd.DataFrame(ts_rows)
-        st.markdown(
-            f'<div class="scrollable-table-wrapper">{ts_df.to_html(index=False)}</div>',
-            unsafe_allow_html=True,
+        ts_rows_html = ""
+        for row in ts_rows:
+            freq = row["Frequency"]
+            input_type = row["Input type"]
+            cols = row["Columns"]
+            rationale = row["Rationale"]
+            
+            if freq.lower().startswith("half"):
+                freq_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.78rem; background: rgba(77, 164, 169, 0.12); color: #4da4a9; border: 1px solid rgba(77, 164, 169, 0.25);">Half-Hourly</span>'
+            else:
+                freq_badge = '<span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.78rem; background: rgba(212, 156, 94, 0.12); color: #d49c5e; border: 1px solid rgba(212, 156, 94, 0.25);">Daily</span>'
+                
+            col_badges = ", ".join([f'<code style="font-family: monospace; font-size: 0.8rem; background: var(--kpi-border); color: var(--theme-text); padding: 2px 6px; border-radius: 4px; font-weight: 500;">{c.strip()}</code>' for c in cols.split(",")])
+            
+            ts_rows_html += (
+                f'<tr>'
+                f'<td style="vertical-align: top; padding: 12px 14px;">{freq_badge}</td>'
+                f'<td style="vertical-align: top; padding: 12px 14px;">'
+                f'<div style="font-weight: 600; font-size: 0.92rem; color: var(--theme-text);">{input_type}</div>'
+                f'</td>'
+                f'<td style="vertical-align: top; padding: 12px 14px;">'
+                f'<div style="line-height: 1.6; margin-bottom: 4px;">{col_badges}</div>'
+                f'</td>'
+                f'<td style="vertical-align: top; padding: 12px 14px;">'
+                f'<div style="font-size: 0.85rem; color: var(--kpi-sub); line-height: 1.45;">{rationale}</div>'
+                f'</td>'
+                f'</tr>'
+            )
+
+        ts_html = (
+            '<div class="scrollable-table-wrapper">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead>'
+            '<tr>'
+            '<th style="width: 15%;">Frequency</th>'
+            '<th style="width: 20%;">Input Type</th>'
+            '<th style="width: 35%;">Columns</th>'
+            '<th style="width: 30%;">Rationale</th>'
+            '</tr>'
+            '</thead>'
+            '<tbody>'
+            f'{ts_rows_html}'
+            '</tbody>'
+            '</table>'
+            '</div>'
         )
+        st.markdown(ts_html, unsafe_allow_html=True)
 
         st.markdown(
             "The simple baselines are included for comparison rather than feature learning: previous-day and "

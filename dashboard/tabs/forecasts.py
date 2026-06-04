@@ -15,8 +15,11 @@ class ForecastsTab(BaseTab):
         daily_pred = data["daily_pred"][data["daily_pred"]["Acorn"].isin(selected_acorns)]
 
         st.markdown(
-            "This tab shows the final forecast deliverables and the saved-model outputs behind them. We "
-            "compare the the model predition with the provided truth values."
+            '<div class="intro-panel">'
+            '<p>This tab shows the final forecast deliverables and the saved-model outputs behind them. We '
+            'compare the model predictions with the provided truth values.</p>'
+            '</div>',
+            unsafe_allow_html=True,
         )
         
         st.subheader("Short-Term Forecast (48 Hours)")
@@ -178,8 +181,7 @@ class ForecastsTab(BaseTab):
         st.plotly_chart(fig, width='stretch', theme=None)
 
         summary = self._test_metric_table(merged, config)
-        display_summary = self._format_test_metric_table(summary)
-        st.markdown(f'<div class="scrollable-table-wrapper">{display_summary.to_html(index=False)}</div>', unsafe_allow_html=True)
+        st.markdown(self._format_test_metric_table(summary, frequency), unsafe_allow_html=True)
         self._render_test_rmse_chart(summary, frequency)
 
     def _render_final_forecast_comparison(
@@ -235,8 +237,8 @@ class ForecastsTab(BaseTab):
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
         st.plotly_chart(fig, width='stretch', theme=None)
 
-        summary = self._forecast_metric_table(filtered, data["metrics"], frequency, config["prediction_col"])
-        st.markdown(f'<div class="scrollable-table-wrapper">{summary.to_html(index=False)}</div>', unsafe_allow_html=True)
+        summary_html = self._forecast_metric_table(filtered, data["metrics"], frequency, config["prediction_col"])
+        st.markdown(summary_html, unsafe_allow_html=True)
         self._render_rmse_chart(data["metrics"], selected_models, frequency)
 
     def _render_validation_comparison(
@@ -302,8 +304,8 @@ class ForecastsTab(BaseTab):
         StyleManager.style_plotly_chart(fig, st.session_state.theme_mode)
         st.plotly_chart(fig, width='stretch', theme=None)
 
-        summary = self._validation_metric_table(data["metrics"], selected_models, frequency)
-        st.markdown(f'<div class="scrollable-table-wrapper">{summary.to_html(index=False)}</div>', unsafe_allow_html=True)
+        summary_html = self._validation_metric_table(data["metrics"], selected_models, frequency)
+        st.markdown(summary_html, unsafe_allow_html=True)
         self._render_rmse_chart(data["metrics"], selected_models, frequency)
 
     def _model_selector(self, model_options: list[str], default_models: list[str], key_suffix: str) -> list[str]:
@@ -449,22 +451,51 @@ class ForecastsTab(BaseTab):
             )
         return pd.DataFrame(rows).sort_values(["rmse", "model"], na_position="last")
 
-    def _format_test_metric_table(self, summary: pd.DataFrame) -> pd.DataFrame:
-        display = summary.copy()
-        display["model"] = display["model"].map(self._model_label)
-        display = display.rename(
-            columns={
-                "model": "Model",
-                "rmse": "Test RMSE",
-                "mae": "Test MAE",
-                "bias": "Test Bias",
-                "n": "Test Rows",
-            }
+    def _format_test_metric_table(self, summary: pd.DataFrame, frequency: str) -> str:
+        rows_html = ""
+        for _, row in summary.iterrows():
+            model_key = row["model"]
+            rmse_val = f"{row['rmse']:.6f}" if pd.notna(row['rmse']) else "n/a"
+            mae_val = f"{row['mae']:.6f}" if pd.notna(row['mae']) else "n/a"
+            bias_val = f"{row['bias']:.6f}" if pd.notna(row['bias']) else "n/a"
+            rows_count = f"{int(row['n'])}" if pd.notna(row['n']) else "0"
+            
+            nice_model_name = self._model_label(model_key)
+            if model_key in {"previous_day", "previous_week", "seasonal_mean"}:
+                model_display = f'<span style="font-weight: 500; color: #c85a64;">{nice_model_name}</span>'
+            else:
+                code_color = "#4da4a9" if frequency == "half_hourly" else "#d49c5e"
+                model_display = f'<code style="font-family: monospace; font-size: 0.8rem; background: var(--kpi-border); color: {code_color}; padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-block;">{nice_model_name}</code>'
+                
+            rows_html += (
+                f'<tr>'
+                f'<td style="vertical-align: middle; padding: 10px 14px;">{model_display}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; font-weight: 600; color: var(--theme-text);">{rmse_val}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--theme-text);">{mae_val}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--theme-text);">{bias_val}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--kpi-sub);">{rows_count}</td>'
+                f'</tr>'
+            )
+            
+        html = (
+            '<div class="scrollable-table-wrapper">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead>'
+            '<tr>'
+            '<th>Model</th>'
+            '<th>Test RMSE</th>'
+            '<th>Test MAE</th>'
+            '<th>Test Bias</th>'
+            '<th>Test Rows</th>'
+            '</tr>'
+            '</thead>'
+            '<tbody>'
+            f'{rows_html}'
+            '</tbody>'
+            '</table>'
+            '</div>'
         )
-        for col in ["Test RMSE", "Test MAE", "Test Bias"]:
-            display[col] = display[col].map(lambda value: "n/a" if pd.isna(value) else f"{value:.4f}")
-        display["Test Rows"] = display["Test Rows"].map(lambda value: "n/a" if pd.isna(value) else f"{int(value)}")
-        return display
+        return html
 
     def _forecast_metric_table(
         self,
@@ -472,7 +503,7 @@ class ForecastsTab(BaseTab):
         metrics: pd.DataFrame,
         frequency: str,
         prediction_col: str,
-    ) -> pd.DataFrame:
+    ) -> str:
         forecast_summary = forecast_df.groupby("model", as_index=False).agg(
             forecast_mean=(prediction_col, "mean"),
             forecast_min=(prediction_col, "min"),
@@ -483,40 +514,99 @@ class ForecastsTab(BaseTab):
         ]
         summary = forecast_summary.merge(metric_subset, on="model", how="left")
         summary = summary.sort_values(["rmse", "model"], na_position="last")
-        summary["model"] = summary["model"].map(self._model_label)
-        summary = summary.rename(
-            columns={
-                "model": "Model",
-                "rmse": "Validation RMSE",
-                "n": "Validation Rows",
-                "forecast_mean": "Forecast Mean",
-                "forecast_min": "Forecast Min",
-                "forecast_max": "Forecast Max",
-            }
+        
+        rows_html = ""
+        for _, row in summary.iterrows():
+            model_key = row["model"]
+            rmse_val = f"{row['rmse']:.6f}" if pd.notna(row['rmse']) else "n/a"
+            rows_count = f"{int(row['n'])}" if pd.notna(row['n']) else "0"
+            f_mean = f"{row['forecast_mean']:.3f}" if pd.notna(row['forecast_mean']) else "n/a"
+            f_min = f"{row['forecast_min']:.3f}" if pd.notna(row['forecast_min']) else "n/a"
+            f_max = f"{row['forecast_max']:.3f}" if pd.notna(row['forecast_max']) else "n/a"
+            
+            nice_model_name = self._model_label(model_key)
+            if model_key in {"previous_day", "previous_week", "seasonal_mean"}:
+                model_display = f'<span style="font-weight: 500; color: #c85a64;">{nice_model_name}</span>'
+            else:
+                code_color = "#4da4a9" if frequency == "half_hourly" else "#d49c5e"
+                model_display = f'<code style="font-family: monospace; font-size: 0.8rem; background: var(--kpi-border); color: {code_color}; padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-block;">{nice_model_name}</code>'
+                
+            rows_html += (
+                f'<tr>'
+                f'<td style="vertical-align: middle; padding: 10px 14px;">{model_display}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; font-weight: 600; color: var(--theme-text);">{rmse_val}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--theme-text);">{f_mean}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--kpi-sub);">{f_min} – {f_max}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--kpi-sub);">{rows_count}</td>'
+                f'</tr>'
+            )
+            
+        html = (
+            '<div class="scrollable-table-wrapper">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead>'
+            '<tr>'
+            '<th>Model</th>'
+            '<th>Validation RMSE</th>'
+            '<th>Forecast Mean</th>'
+            '<th>Forecast Range (Min – Max)</th>'
+            '<th>Validation Rows</th>'
+            '</tr>'
+            '</thead>'
+            '<tbody>'
+            f'{rows_html}'
+            '</tbody>'
+            '</table>'
+            '</div>'
         )
-        for col in ["Validation RMSE", "Forecast Mean", "Forecast Min", "Forecast Max"]:
-            summary[col] = summary[col].map(lambda value: "n/a" if pd.isna(value) else f"{value:.4f}")
-        summary["Validation Rows"] = summary["Validation Rows"].map(
-            lambda value: "n/a" if pd.isna(value) else f"{int(value)}"
-        )
-        return summary
+        return html
 
-    def _validation_metric_table(self, metrics: pd.DataFrame, models: list[str], frequency: str) -> pd.DataFrame:
+    def _validation_metric_table(self, metrics: pd.DataFrame, models: list[str], frequency: str) -> str:
         summary = metrics[
             (metrics["frequency"] == frequency)
             & (metrics["acorn"] == "ALL")
             & (metrics["model"].isin(models))
         ][["model", "rmse", "n"]].copy()
         summary = summary.sort_values(["rmse", "model"], na_position="last")
-        summary["model"] = summary["model"].map(self._model_label)
-        summary = summary.rename(columns={"model": "Model", "rmse": "Validation RMSE", "n": "Validation Rows"})
-        summary["Validation RMSE"] = summary["Validation RMSE"].map(
-            lambda value: "n/a" if pd.isna(value) else f"{value:.4f}"
+        
+        rows_html = ""
+        for _, row in summary.iterrows():
+            model_key = row["model"]
+            rmse_val = f"{row['rmse']:.6f}" if pd.notna(row['rmse']) else "n/a"
+            rows_count = f"{int(row['n'])}" if pd.notna(row['n']) else "0"
+            
+            nice_model_name = self._model_label(model_key)
+            if model_key in {"previous_day", "previous_week", "seasonal_mean"}:
+                model_display = f'<span style="font-weight: 500; color: #c85a64;">{nice_model_name}</span>'
+            else:
+                code_color = "#4da4a9" if frequency == "half_hourly" else "#d49c5e"
+                model_display = f'<code style="font-family: monospace; font-size: 0.8rem; background: var(--kpi-border); color: {code_color}; padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-block;">{nice_model_name}</code>'
+                
+            rows_html += (
+                f'<tr>'
+                f'<td style="vertical-align: middle; padding: 10px 14px;">{model_display}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; font-weight: 600; color: var(--theme-text);">{rmse_val}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--kpi-sub);">{rows_count}</td>'
+                f'</tr>'
+            )
+            
+        html = (
+            '<div class="scrollable-table-wrapper">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead>'
+            '<tr>'
+            '<th>Model</th>'
+            '<th>Validation RMSE</th>'
+            '<th>Validation Rows</th>'
+            '</tr>'
+            '</thead>'
+            '<tbody>'
+            f'{rows_html}'
+            '</tbody>'
+            '</table>'
+            '</div>'
         )
-        summary["Validation Rows"] = summary["Validation Rows"].map(
-            lambda value: "n/a" if pd.isna(value) else f"{int(value)}"
-        )
-        return summary
+        return html
 
     def _ordered_models(self, models: list[str], metrics: pd.DataFrame, frequency: str) -> list[str]:
         metric_subset = metrics[(metrics["frequency"] == frequency) & (metrics["acorn"] == "ALL")].copy()

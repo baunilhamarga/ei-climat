@@ -39,11 +39,14 @@ class CarbonTab(BaseTab):
         st.markdown(kpi_html, unsafe_allow_html=True)
 
         st.markdown(
-            "This tab estimates the carbon emissions of the high-cost AutoGluon experiment before it is run. "
-            "Most benchmark models trained quickly, but the final all-in AutoGluon calibration is intentionally "
-            "the compute-heavy run. The goal is to make that cost visible in the same dashboard as model quality: "
-            "training time, hardware power, data-center efficiency, and the Bulgarian electricity mix are combined "
-            "into a reproducible CO2e estimate."
+            '<div class="intro-panel">'
+            '<p>This tab estimates the carbon emissions of the high-cost AutoGluon experiment before it is run. '
+            'Most benchmark models trained quickly, but the final all-in AutoGluon calibration is intentionally '
+            'the compute-heavy run. The goal is to make that cost visible in the same dashboard as model quality: '
+            'training time, hardware power, data-center efficiency, and the Bulgarian electricity mix are combined '
+            'into a reproducible CO2e estimate.</p>'
+            '</div>',
+            unsafe_allow_html=True,
         )
 
         with st.expander("How do we calculate carbon emissions for ML?"):
@@ -94,12 +97,50 @@ class CarbonTab(BaseTab):
                 self._scenario_row("Lower planning estimate", self.LOWER_RUNTIME_HOURS),
             ]
         )
-        display = scenarios.copy()
-        display["Runtime (h)"] = display["Runtime (h)"].map(lambda value: f"{value:.1f}")
-        display["IT power (kW)"] = display["IT power (kW)"].map(lambda value: f"{value:.2f}")
-        display["Facility energy (kWh)"] = display["Facility energy (kWh)"].map(lambda value: f"{value:.2f}")
-        display["CO2e (kg)"] = display["CO2e (kg)"].map(lambda value: f"{value:.2f}")
-        st.markdown(f'<div class="scrollable-table-wrapper">{display.to_html(index=False)}</div>', unsafe_allow_html=True)
+        scenarios_rows_html = ""
+        for _, row in scenarios.iterrows():
+            scenario = row["Scenario"]
+            runtime = f"{row['Runtime (h)']:.1f} h"
+            it_power = f"{row['IT power (kW)']:.2f} kW"
+            fac_energy = f"{row['Facility energy (kWh)']:.2f} kWh"
+            co2 = f"{row['CO2e (kg)']:.2f} kg"
+            
+            if "18h" in scenario:
+                scenario_display = '<strong style="color: #c85a64;">18h time used estimate</strong>'
+            elif "Expected" in scenario:
+                scenario_display = '<strong style="color: #d49c5e;">Expected planning estimate</strong>'
+            else:
+                scenario_display = '<strong style="color: #4da4a9;">Lower planning estimate</strong>'
+                
+            scenarios_rows_html += (
+                f'<tr>'
+                f'<td style="vertical-align: middle; padding: 10px 14px;">{scenario_display}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; font-weight: 600; color: var(--theme-text);">{runtime}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--theme-text);">{it_power}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; color: var(--theme-text);">{fac_energy}</td>'
+                f'<td style="vertical-align: middle; padding: 10px 14px; font-weight: 600; color: var(--theme-text);">{co2}</td>'
+                f'</tr>'
+            )
+            
+        scenarios_html = (
+            '<div class="scrollable-table-wrapper">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead>'
+            '<tr>'
+            '<th>Scenario</th>'
+            '<th>Runtime</th>'
+            '<th>IT Power</th>'
+            '<th>Facility Energy</th>'
+            '<th>CO2e Emissions</th>'
+            '</tr>'
+            '</thead>'
+            '<tbody>'
+            f'{scenarios_rows_html}'
+            '</tbody>'
+            '</table>'
+            '</div>'
+        )
+        st.markdown(scenarios_html, unsafe_allow_html=True)
 
         fig = px.bar(
             scenarios,
