@@ -591,6 +591,8 @@ class StyleManager:
         overflow-y: auto !important;
         border: 1px solid var(--kpi-border) !important;
         border-radius: 8px !important;
+        margin-top: 1.0rem !important;
+        margin-bottom: 1.5rem !important;
     }
 
     /* Custom premium scrollbar for table container */
