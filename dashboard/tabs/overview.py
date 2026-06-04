@@ -72,6 +72,129 @@ class OverviewTab(BaseTab):
         })
         st.markdown(f'<div class="scrollable-table-wrapper">{display_best.to_html(index=False)}</div>', unsafe_allow_html=True)
 
+        st.subheader("Best Model Forecast vs Actual Validation")
+        st.markdown(
+            "These charts compare actual consumption with the forecasts from the best performing model. "
+            "The curves represent the **total consumption summed across all selected ACORN categories** over the validation period."
+        )
+        
+        # Load validation predictions and actuals
+        half_valid_df = data["half_valid"]
+        daily_valid_df = data["daily_valid"]
+
+        half_valid_models = [c for c in half_valid_df.columns if c not in ["frequency", "Acorn", "timestamp", "actual"]]
+        daily_valid_models = [c for c in daily_valid_df.columns if c not in ["frequency", "Acorn", "timestamp", "actual"]]
+
+        # Find the best models dynamically based on selected ACORN segments
+        half_best_model = None
+        for model in combined_metrics[combined_metrics["frequency"] == "half_hourly"].sort_values("rmse")["model"]:
+            if model in half_valid_models:
+                half_best_model = model
+                break
+        if half_best_model is None:
+            half_best_model = half_valid_models[0] if half_valid_models else "xgboost"
+
+        daily_best_model = None
+        for model in combined_metrics[combined_metrics["frequency"] == "daily"].sort_values("rmse")["model"]:
+            if model in daily_valid_models:
+                daily_best_model = model
+                break
+        if daily_best_model is None:
+            daily_best_model = daily_valid_models[0] if daily_valid_models else "xgboost"
+
+        # Sum of consumption across selected ACORN segments
+        half_v_filtered = half_valid_df[half_valid_df["Acorn"].isin(selected_acorns)]
+        daily_v_filtered = daily_valid_df[daily_valid_df["Acorn"].isin(selected_acorns)]
+
+        # Group by timestamp and sum actual and prediction columns
+        half_summed = half_v_filtered.groupby("timestamp").agg(
+            actual=("actual", "sum"),
+            pred=(half_best_model, "sum")
+        ).reset_index()
+
+        daily_summed = daily_v_filtered.groupby("timestamp").agg(
+            actual=("actual", "sum"),
+            pred=(daily_best_model, "sum")
+        ).reset_index()
+
+        nice_half_model = StyleManager.MODEL_MAP.get(half_best_model, half_best_model)
+        nice_daily_model = StyleManager.MODEL_MAP.get(daily_best_model, daily_best_model)
+
+        actual_color = "#4da4a9"
+        half_pred_color = "#c85a64"
+        daily_pred_color = "#d49c5e"
+
+        # Half-Hourly Chart
+        half_plot_df = half_summed.melt(
+            id_vars=["timestamp"],
+            value_vars=["actual", "pred"],
+            var_name="Series",
+            value_name="Consumption"
+        )
+        half_plot_df["Series"] = half_plot_df["Series"].map({
+            "actual": "Actual",
+            "pred": f"Predicted ({nice_half_model})"
+        })
+
+        fig_half_forecast = px.line(
+            half_plot_df,
+            x="timestamp",
+            y="Consumption",
+            color="Series",
+            color_discrete_map={
+                "Actual": actual_color,
+                f"Predicted ({nice_half_model})": half_pred_color
+            },
+            title="Half-Hourly Validation: Total Consumption across selected ACORN categories",
+            labels={
+                "timestamp": "Validation Timeline (Half-Hourly)",
+                "Consumption": "Summed Consumption of all ACORNs (kW)",
+                "Series": "Legend"
+            }
+        )
+        for trace in fig_half_forecast.data:
+            if trace.name.startswith("Predicted"):
+                trace.line.dash = "dash"
+        StyleManager.style_plotly_chart(fig_half_forecast, st.session_state.theme_mode)
+
+        # Daily Chart
+        daily_plot_df = daily_summed.melt(
+            id_vars=["timestamp"],
+            value_vars=["actual", "pred"],
+            var_name="Series",
+            value_name="Consumption"
+        )
+        daily_plot_df["Series"] = daily_plot_df["Series"].map({
+            "actual": "Actual",
+            "pred": f"Predicted ({nice_daily_model})"
+        })
+
+        fig_daily_forecast = px.line(
+            daily_plot_df,
+            x="timestamp",
+            y="Consumption",
+            color="Series",
+            color_discrete_map={
+                "Actual": actual_color,
+                f"Predicted ({nice_daily_model})": daily_pred_color
+            },
+            title="Daily Validation: Total Consumption across selected ACORN categories",
+            labels={
+                "timestamp": "Validation Timeline (Daily)",
+                "Consumption": "Summed Consumption of all ACORNs (kWh)",
+                "Series": "Legend"
+            }
+        )
+        for trace in fig_daily_forecast.data:
+            if trace.name.startswith("Predicted"):
+                trace.line.dash = "dash"
+        StyleManager.style_plotly_chart(fig_daily_forecast, st.session_state.theme_mode)
+
+        # Render forecast graphs side-by-side
+        forecast_cols = st.columns(2)
+        forecast_cols[0].plotly_chart(fig_half_forecast, width='stretch', theme=None)
+        forecast_cols[1].plotly_chart(fig_daily_forecast, width='stretch', theme=None)
+
         st.subheader("Key Visual Trends")
 
         # 14-day rolling mean daily consumption trend (calculated dynamically)
