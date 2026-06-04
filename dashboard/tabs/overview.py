@@ -90,6 +90,7 @@ class OverviewTab(BaseTab):
         # Half-Hourly RMSE Chart
         metric_half = metric_subset[metric_subset["frequency"] == "half_hourly"].copy()
         metric_half["model"] = metric_half["model"].map(StyleManager.MODEL_MAP)
+        metric_half = metric_half.sort_values("rmse", ascending=False)
         fig_rmse_half = px.bar(
             metric_half,
             x="model",
@@ -101,12 +102,14 @@ class OverviewTab(BaseTab):
             },
             color_discrete_sequence=["#4da4a9"]
         )
+        fig_rmse_half.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse_half, st.session_state.theme_mode)
         rmse_cols[0].plotly_chart(fig_rmse_half, width='stretch')
 
         # Daily RMSE Chart
         metric_daily = metric_subset[metric_subset["frequency"] == "daily"].copy()
         metric_daily["model"] = metric_daily["model"].map(StyleManager.MODEL_MAP)
+        metric_daily = metric_daily.sort_values("rmse", ascending=False)
         fig_rmse_daily = px.bar(
             metric_daily,
             x="model",
@@ -118,5 +121,6 @@ class OverviewTab(BaseTab):
             },
             color_discrete_sequence=["#d49c5e"]
         )
+        fig_rmse_daily.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse_daily, st.session_state.theme_mode)
         rmse_cols[1].plotly_chart(fig_rmse_daily, width='stretch')

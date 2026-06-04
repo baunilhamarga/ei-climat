@@ -267,12 +267,13 @@ class ForecastsTab(BaseTab):
             return
         metric_subset["model_label"] = metric_subset["model"].map(self._model_label)
         fig_rmse = px.bar(
-            metric_subset.sort_values("rmse"),
+            metric_subset.sort_values("rmse", ascending=False),
             x="model_label",
             y="rmse",
             title="Validation RMSE for Displayed Models",
             labels={"model_label": "Model", "rmse": "Validation RMSE"},
         )
+        fig_rmse.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse, st.session_state.theme_mode)
         st.plotly_chart(fig_rmse, width='stretch')
 
@@ -282,12 +283,13 @@ class ForecastsTab(BaseTab):
         chart_df = summary.copy()
         chart_df["model_label"] = chart_df["model"].map(self._model_label)
         fig_rmse = px.bar(
-            chart_df.sort_values("rmse"),
+            chart_df.sort_values("rmse", ascending=False),
             x="model_label",
             y="rmse",
             title="Final Test RMSE for Displayed Models",
             labels={"model_label": "Model", "rmse": "Test RMSE"},
         )
+        fig_rmse.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse, st.session_state.theme_mode)
         st.plotly_chart(fig_rmse, width='stretch')
 

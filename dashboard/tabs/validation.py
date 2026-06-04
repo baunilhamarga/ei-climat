@@ -35,6 +35,7 @@ class ValidationTab(BaseTab):
         # Half-Hourly Chart
         overall_half = overall_metrics[overall_metrics["frequency"] == "half_hourly"].copy()
         overall_half["model"] = overall_half["model"].map(StyleManager.MODEL_MAP)
+        overall_half = overall_half.sort_values("rmse", ascending=False)
         fig_half = px.bar(
             overall_half,
             x="model",
@@ -46,12 +47,14 @@ class ValidationTab(BaseTab):
             },
             color_discrete_sequence=["#4da4a9"]
         )
+        fig_half.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_half, st.session_state.theme_mode)
         overall_cols[0].plotly_chart(fig_half, width='stretch')
         
         # Daily Chart
         overall_daily = overall_metrics[overall_metrics["frequency"] == "daily"].copy()
         overall_daily["model"] = overall_daily["model"].map(StyleManager.MODEL_MAP)
+        overall_daily = overall_daily.sort_values("rmse", ascending=False)
         fig_daily = px.bar(
             overall_daily,
             x="model",
@@ -63,6 +66,7 @@ class ValidationTab(BaseTab):
             },
             color_discrete_sequence=["#d49c5e"]
         )
+        fig_daily.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_daily, st.session_state.theme_mode)
         overall_cols[1].plotly_chart(fig_daily, width='stretch')
 

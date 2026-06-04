@@ -20,10 +20,14 @@ class ComparisonTab(BaseTab):
             .reset_index()
         )
         
+        # Sort by mean consumption descending
+        daily_summary = daily_summary.sort_values("mean", ascending=False)
+        
         st.subheader("Statistical Summary of Forecasts by Segment")
+        display_summary = daily_summary.copy()
         for col in ["mean", "min", "max"]:
-            daily_summary[col] = daily_summary[col].map(lambda x: f"{x:.3f}")
-        display_summary = daily_summary.rename(columns={
+            display_summary[col] = display_summary[col].map(lambda x: f"{x:.3f}")
+        display_summary = display_summary.rename(columns={
             "Acorn": "ACORN Segment",
             "mean": "Mean Predicted Daily Consumption (kWh)",
             "min": "Minimum Predicted Daily Consumption (kWh)",
@@ -44,5 +48,6 @@ class ComparisonTab(BaseTab):
                 "mean": "Mean Forecasted Daily Consumption (kWh)"
             }
         )
+        fig_bar.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_bar, st.session_state.theme_mode)
         st.plotly_chart(fig_bar, width='stretch')
