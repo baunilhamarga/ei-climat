@@ -1,4 +1,5 @@
 from dashboard.tabs.base import BaseTab
+from dashboard.tabs.about import AboutTab
 from dashboard.tabs.overview import OverviewTab
 from dashboard.tabs.eda import EDATab
 from dashboard.tabs.validation import ValidationTab
@@ -7,6 +8,7 @@ from dashboard.tabs.comparison import ComparisonTab
 
 __all__ = [
     "BaseTab",
+    "AboutTab",
     "OverviewTab",
     "EDATab",
     "ValidationTab",

@@ -16,7 +16,7 @@ from dashboard.data_loader import DataLoader
 # pyrefly: ignore [missing-import]
 from dashboard.styles import StyleManager
 # pyrefly: ignore [missing-import]
-from dashboard.tabs import OverviewTab, EDATab, ValidationTab, ForecastsTab, ComparisonTab
+from dashboard.tabs import AboutTab, OverviewTab, EDATab, ValidationTab, ForecastsTab
 
 class ForecastDashboardApp:
     """Central app coordinating Streamlit setup, styling, caching, data-flow, and views."""
@@ -28,11 +28,11 @@ class ForecastDashboardApp:
         
         # Instantiate the modular tab components
         self.tabs = {
+            "About": AboutTab(),
             "Overview": OverviewTab(self.root_dir),
             "EDA": EDATab(),
             "Validation": ValidationTab(),
             "Forecasts": ForecastsTab(),
-            "ACORN Comparison": ComparisonTab(),
         }
 
     def run(self) -> None:
@@ -101,7 +101,7 @@ class ForecastDashboardApp:
         # Header layout with Title and the Acorn selector in columns
         col1, col2 = st.columns([2, 3], vertical_alignment="bottom")
         with col1:
-            st.title("Group 5 Energy Forecasts")
+            st.title("UK Household Energy Forecasts - Group 5")
         with col2:
             col2_filter, col2_toggle = st.columns([8, 1], vertical_alignment="bottom")
             with col2_filter:

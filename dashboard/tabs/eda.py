@@ -160,3 +160,77 @@ class EDATab(BaseTab):
         )
         StyleManager.style_plotly_chart(fig_autocorr, st.session_state.theme_mode)
         st.plotly_chart(fig_autocorr, width='stretch', theme=None)
+
+        self._render_acorn_comparison(data, selected_acorns, filtered_daily)
+
+    def _render_acorn_comparison(
+        self,
+        data: dict[str, pd.DataFrame],
+        selected_acorns: list[str],
+        filtered_daily: pd.DataFrame,
+    ) -> None:
+        st.subheader("ACORN Segment Comparison")
+
+        daily_pred = data["daily_pred"][data["daily_pred"]["Acorn"].isin(selected_acorns)].copy()
+        if filtered_daily.empty or daily_pred.empty:
+            st.info("No ACORN comparison data is available for the current selection.")
+            return
+
+        historical_summary = (
+            filtered_daily.groupby("Acorn")["Conso_kWh"]
+            .agg(historical_mean="mean", historical_min="min", historical_max="max")
+            .reset_index()
+        )
+        forecast_summary = (
+            daily_pred.groupby("Acorn")["Conso_kWh_predict"]
+            .agg(forecast_mean="mean", forecast_min="min", forecast_max="max")
+            .reset_index()
+        )
+        summary = historical_summary.merge(forecast_summary, on="Acorn", how="outer").sort_values(
+            "forecast_mean", ascending=False
+        )
+
+        display_summary = summary.copy()
+        for col in [
+            "historical_mean",
+            "historical_min",
+            "historical_max",
+            "forecast_mean",
+            "forecast_min",
+            "forecast_max",
+        ]:
+            display_summary[col] = display_summary[col].map(lambda value: f"{value:.3f}" if pd.notna(value) else "n/a")
+        display_summary = display_summary.rename(
+            columns={
+                "Acorn": "ACORN Segment",
+                "historical_mean": "Historical Mean Daily kWh",
+                "historical_min": "Historical Min Daily kWh",
+                "historical_max": "Historical Max Daily kWh",
+                "forecast_mean": "Forecast Mean Daily kWh",
+                "forecast_min": "Forecast Min Daily kWh",
+                "forecast_max": "Forecast Max Daily kWh",
+            }
+        )
+
+        col1, col2 = st.columns([3, 2])
+        with col1:
+            st.markdown(
+                f'<div class="scrollable-table-wrapper">{display_summary.to_html(index=False)}</div>',
+                unsafe_allow_html=True,
+            )
+        with col2:
+            fig_bar = px.bar(
+                summary,
+                x="Acorn",
+                y="forecast_mean",
+                color="Acorn",
+                color_discrete_map=StyleManager.PALETTE,
+                title="Mean Forecast Daily Consumption by Segment",
+                labels={
+                    "Acorn": "ACORN Segment",
+                    "forecast_mean": "Mean Forecast Daily Consumption (kWh)",
+                },
+            )
+            fig_bar.update_xaxes(categoryorder="total descending")
+            StyleManager.style_plotly_chart(fig_bar, st.session_state.theme_mode)
+            st.plotly_chart(fig_bar, width="stretch", theme=None)
