@@ -1401,6 +1401,7 @@ class AutoGluonTimeSeriesModel:
         self.val_step_size = positive_int_env("GROUP5_AUTOGLUON_TS_VAL_STEP_SIZE")
         self.refit_full = bool_env("GROUP5_AUTOGLUON_TS_REFIT_FULL")
         self.enable_ensemble = bool_env("GROUP5_AUTOGLUON_TS_ENABLE_ENSEMBLE")
+        self.predict_model = os.environ.get("GROUP5_AUTOGLUON_TS_PREDICT_MODEL", "").strip() or None
         self.verbosity = autogluon_timeseries_verbosity()
 
     def fit_history(self, history: pd.DataFrame, target_col: str, time_col: str) -> "AutoGluonTimeSeriesModel":
@@ -1447,8 +1448,46 @@ class AutoGluonTimeSeriesModel:
             self.predictor = TimeSeriesPredictor.load(str(self.path))
         history_data = time_series_data_frame(history, self.frequency, target_col, time_col, include_target=True)
         known_covariates = time_series_data_frame(future, self.frequency, target_col, time_col, include_target=False)
-        predictions = self.predictor.predict(history_data, known_covariates=known_covariates)
+        predictions = self._predict_with_selected_model(history_data, known_covariates)
         return align_time_series_predictions(predictions, future, time_col)
+
+    def _predict_with_selected_model(self, history_data: Any, known_covariates: Any) -> Any:
+        model_name = self._configured_prediction_model()
+        try:
+            return self.predictor.predict(history_data, known_covariates=known_covariates, model=model_name)
+        except RuntimeError:
+            fallback_model = self._non_full_best_model()
+            if model_name is None and fallback_model is not None:
+                print(
+                    f"AutoGluon TimeSeries default model failed to predict; retrying with {fallback_model}.",
+                    flush=True,
+                )
+                return self.predictor.predict(
+                    history_data,
+                    known_covariates=known_covariates,
+                    model=fallback_model,
+                )
+            raise
+
+    def _configured_prediction_model(self) -> str | None:
+        if self.predict_model is None:
+            return None
+        if self.predict_model in {"best_non_full", "non_full_best"}:
+            return self._non_full_best_model()
+        return self.predict_model
+
+    def _non_full_best_model(self) -> str | None:
+        if self.predictor is None:
+            return None
+        best_model = getattr(self.predictor, "model_best", None)
+        if not best_model or not str(best_model).endswith("_FULL"):
+            return None
+        candidate = str(best_model).removesuffix("_FULL")
+        try:
+            model_names = set(self.predictor.model_names())
+        except Exception:
+            return candidate
+        return candidate if candidate in model_names else None
 
     def copy_to(self, destination: Path) -> None:
         if self.path.resolve() == destination.resolve():

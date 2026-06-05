@@ -1,8 +1,8 @@
 {
   "half_hourly_rows": 288,
   "daily_rows": 96,
-  "half_hourly_all_model_rows": 2304,
-  "daily_all_model_rows": 768,
+  "half_hourly_all_model_rows": 2880,
+  "daily_all_model_rows": 960,
   "parquet_available": true,
   "selected_half_hourly_model": "lightgbm",
   "selected_daily_model": "autogluon",
@@ -14,7 +14,9 @@
     "lightgbm",
     "stack_regressor",
     "autogluon",
-    "autogluon_timeseries"
+    "autogluon_timeseries",
+    "autogluon_best",
+    "autogluon_timeseries_best"
   ],
   "interim_csv_dir": "/root/ei-climat/data/01_interim/group5/csv",
   "interim_parquet_dir": "/root/ei-climat/data/01_interim/group5/parquet",
@@ -30,7 +32,9 @@
     "lightgbm": "/root/ei-climat/models/short_term/group5_half_hourly_lightgbm.joblib",
     "stack_regressor": "/root/ei-climat/models/short_term/group5_half_hourly_stack_regressor.joblib",
     "autogluon": "/root/ei-climat/models/short_term/group5_half_hourly_autogluon",
-    "autogluon_timeseries": "/root/ei-climat/models/short_term/group5_half_hourly_autogluon_timeseries"
+    "autogluon_timeseries": "/root/ei-climat/models/short_term/group5_half_hourly_autogluon_timeseries",
+    "autogluon_best": "/root/ei-climat/models/short_term/group5_half_hourly_autogluon_best",
+    "autogluon_timeseries_best": "/root/ei-climat/models/short_term/group5_half_hourly_autogluon_timeseries_best"
   },
   "medium_term_model_paths": {
     "ridge": "/root/ei-climat/models/medium_term/group5_daily_ridge.joblib",
@@ -40,7 +44,9 @@
     "lightgbm": "/root/ei-climat/models/medium_term/group5_daily_lightgbm.joblib",
     "stack_regressor": "/root/ei-climat/models/medium_term/group5_daily_stack_regressor.joblib",
     "autogluon": "/root/ei-climat/models/medium_term/group5_daily_autogluon",
-    "autogluon_timeseries": "/root/ei-climat/models/medium_term/group5_daily_autogluon_timeseries"
+    "autogluon_timeseries": "/root/ei-climat/models/medium_term/group5_daily_autogluon_timeseries",
+    "autogluon_best": "/root/ei-climat/models/medium_term/group5_daily_autogluon_best",
+    "autogluon_timeseries_best": "/root/ei-climat/models/medium_term/group5_daily_autogluon_timeseries_best"
   },
   "short_term_all_model_prediction_path": "/root/ei-climat/outputs/group5/predictions/group_5_half_hourly_all_models_predict.csv",
   "medium_term_all_model_prediction_path": "/root/ei-climat/outputs/group5/predictions/group_5_daily_all_models_predict.csv",

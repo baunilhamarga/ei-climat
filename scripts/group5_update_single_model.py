@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import argparse
 import json
+import os
 import shutil
 import sys
 
@@ -147,6 +148,15 @@ def validate_dashboard_model_name(model_name: str) -> None:
         )
 
 
+def bool_env(name: str) -> bool:
+    raw_value = str(os.environ.get(name, "")).strip().lower()
+    return raw_value in {"1", "true", "yes", "y", "on"}
+
+
+def reuse_existing_autogluon_model(path: Path) -> bool:
+    return bool_env("GROUP5_REUSE_EXISTING_AUTOGLUON") and path.exists()
+
+
 def update_frequency(
     *,
     model_name: str,
@@ -244,20 +254,27 @@ def fit_validation_predictions(
 ) -> pd.Series | list[float]:
     if model_name == AUTOGLUON_TIMESERIES_MODEL:
         prediction_length = autogluon_timeseries_validation_horizon(frequency, valid, time_col)
+        model_path = autogluon_validation_path(frequency, output_model_name)
         model = make_model(
             model_name,
             frequency,
-            autogluon_validation_path(frequency, output_model_name),
+            model_path,
             prediction_length=prediction_length,
         )
-        model.fit_history(train, target_col, time_col)
+        if reuse_existing_autogluon_model(model_path):
+            print(f"[{frequency}] reusing existing validation {output_model_name} at {model_path}", flush=True)
+        else:
+            model.fit_history(train, target_col, time_col)
         return clip_predictions(
             autogluon_timeseries_validation_predictions(model, train, valid, frequency, target_col, time_col)
         )
 
     model_path = autogluon_validation_path(frequency, output_model_name) if model_name == AUTOGLUON_TABULAR_MODEL else None
     model = make_model(model_name, frequency, model_path)
-    model.fit(feature_matrix(train, frequency), train[target_col])
+    if model_name == AUTOGLUON_TABULAR_MODEL and model_path is not None and reuse_existing_autogluon_model(model_path):
+        print(f"[{frequency}] reusing existing validation {output_model_name} at {model_path}", flush=True)
+    else:
+        model.fit(feature_matrix(train, frequency), train[target_col])
     return clip_predictions(model.predict(feature_matrix(valid, frequency)))
 
 
@@ -278,11 +295,17 @@ def fit_final_update_model(
             model_path,
             prediction_length=forecast_horizon_length(future, time_col),
         )
-        model.fit_history(history, target_col, time_col)
+        if reuse_existing_autogluon_model(model_path):
+            print(f"[{frequency}] reusing existing final {output_model_name} at {model_path}", flush=True)
+        else:
+            model.fit_history(history, target_col, time_col)
         return model
 
     model = make_model(model_name, frequency, model_path if model_name == AUTOGLUON_TABULAR_MODEL else None)
-    model.fit(feature_matrix(history, frequency), history[target_col])
+    if model_name == AUTOGLUON_TABULAR_MODEL and reuse_existing_autogluon_model(model_path):
+        print(f"[{frequency}] reusing existing final {output_model_name} at {model_path}", flush=True)
+    else:
+        model.fit(feature_matrix(history, frequency), history[target_col])
     if model_name not in AUTOGLUON_MODELS:
         joblib.dump(model, model_path)
     return model
