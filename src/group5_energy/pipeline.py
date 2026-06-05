@@ -2388,10 +2388,16 @@ def validate_model_prediction_outputs(
     half_model_predictions: pd.DataFrame,
     daily_model_predictions: pd.DataFrame,
 ) -> None:
-    expected_models = set(active_trainable_model_names())
+    half_models = set(half_model_predictions["model"].dropna().unique())
+    daily_models = set(daily_model_predictions["model"].dropna().unique())
+    if half_models != daily_models:
+        raise ValueError(
+            "All-model prediction files disagree on model names: "
+            f"half-hourly={sorted(half_models)}, daily={sorted(daily_models)}."
+        )
     validate_model_prediction_frame(
         half_model_predictions,
-        expected_models,
+        half_models,
         time_col="DateTime",
         prediction_col="Conso_moy_predict",
         expected_rows_per_model=288,
@@ -2399,7 +2405,7 @@ def validate_model_prediction_outputs(
     )
     validate_model_prediction_frame(
         daily_model_predictions,
-        expected_models,
+        daily_models,
         time_col="Date",
         prediction_col="Conso_kWh_predict",
         expected_rows_per_model=96,
@@ -2453,6 +2459,12 @@ def validate_outputs(half_predictions: pd.DataFrame, daily_predictions: pd.DataF
     expected_frequencies = {"half_hourly", "daily"}
     if set(metrics["frequency"].unique()) != expected_frequencies:
         raise ValueError("Validation metrics are missing a frequency.")
-    for model_name in active_trainable_model_names():
-        if metrics[(metrics["acorn"] == "ALL") & (metrics["model"] == model_name)].empty:
-            raise ValueError(f"Validation metrics are missing the {model_name} model.")
+    metric_models = sorted(set(metrics["model"].dropna().unique()) - set(BASELINE_MODEL_NAMES))
+    for model_name in metric_models:
+        for frequency in expected_frequencies:
+            if metrics[
+                (metrics["frequency"] == frequency)
+                & (metrics["acorn"] == "ALL")
+                & (metrics["model"] == model_name)
+            ].empty:
+                raise ValueError(f"Validation metrics are missing the {model_name} model for {frequency}.")
