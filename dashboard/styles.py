@@ -1055,7 +1055,9 @@ class StyleManager:
             zeroline=True,
             zerolinecolor=zeroline_color,
             tickfont=dict(color=text_color),
-            title_font=dict(color=text_color)
+            title_font=dict(color=text_color),
+            automargin=True,
+            title_standoff=15
         )
         fig.update_yaxes(
             showgrid=True,
@@ -1063,7 +1065,9 @@ class StyleManager:
             zeroline=True,
             zerolinecolor=zeroline_color,
             tickfont=dict(color=text_color),
-            title_font=dict(color=text_color)
+            title_font=dict(color=text_color),
+            automargin=True,
+            title_standoff=15
         )
         
         # Dynamically adjust relative bar width based on number of active categories to keep them visually pleasing
