@@ -62,7 +62,7 @@ class ForecastDashboardApp:
                     changed = true;
                 }
                 if (!params.has('viewport')) {
-                    const viewport = window.innerWidth <= 768 ? 'mobile' : 'desktop';
+                    const viewport = window.innerWidth <= 1024 ? 'mobile' : 'desktop';
                     params.set('viewport', viewport);
                     changed = true;
                 }
@@ -122,7 +122,7 @@ class ForecastDashboardApp:
                 parentWin.addEventListener('resize', () => {
                     clearTimeout(resizeTimeout);
                     resizeTimeout = setTimeout(() => {
-                        const currentViewport = parentWin.innerWidth <= 768 ? 'mobile' : 'desktop';
+                        const currentViewport = parentWin.innerWidth <= 1024 ? 'mobile' : 'desktop';
                         const params = new URLSearchParams(parentWin.location.search);
                         if (params.get('viewport') !== currentViewport) {
                             params.set('viewport', currentViewport);

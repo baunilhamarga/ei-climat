@@ -281,7 +281,7 @@ class StyleManager:
     .stTabs [data-baseweb="tab"] * {
         margin: 0 !important;
         padding: 0 !important;
-        line-height: 1 !important;
+        line-height: normal !important;
     }
 
     .stTabs [data-baseweb="tab"]:hover {
@@ -347,7 +347,7 @@ class StyleManager:
         display: flex !important;
         justify-content: flex-end !important;
         align-items: center !important;
-        flex-wrap: nowrap !important;
+        flex-wrap: wrap !important;
         gap: 0.5rem !important;
     }
 
@@ -878,13 +878,8 @@ class StyleManager:
         height: 0 !important;
     }
 
-    /* Mobile Responsiveness Overhaul */
-    @media (max-width: 768px) {
-        .mobile-only-spacer {
-            display: block !important;
-            height: 2.2rem !important;
-        }
-
+    /* Mobile and Tablet Responsiveness Overhaul */
+    @media (max-width: 1024px) {
         /* Hide Plotly chart modebar (zoom, pan, etc.) to prevent obstructing titles */
         .js-plotly-plot .modebar,
         .js-plotly-plot .modebar-container,
@@ -1000,10 +995,14 @@ class StyleManager:
             flex-wrap: nowrap !important;
         }
         .stTabs [data-baseweb="tab"] {
-            font-size: 0.8rem !important;
-            padding: 0 10px !important;
-            height: 40px !important;
+            font-size: 0.85rem !important;
+            padding: 0 12px !important;
+            height: 45px !important;
             white-space: nowrap !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            line-height: normal !important;
         }
 
         /* Mobile Table Scrolling and Column Layouts */
@@ -1071,6 +1070,14 @@ class StyleManager:
         }
         .member-detail {
             font-size: 0.75rem !important;
+        }
+    }
+
+    /* Column stacking spacer only for small mobile viewports */
+    @media (max-width: 768px) {
+        .mobile-only-spacer {
+            display: block !important;
+            height: 2.2rem !important;
         }
     }
     """
