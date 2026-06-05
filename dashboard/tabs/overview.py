@@ -355,19 +355,58 @@ class OverviewTab(BaseTab):
             "autogluon_timeseries_best",
         ]
         descriptions = {
-            "previous_day": "Repeats the same ACORN value from one day earlier. This is the main persistence baseline.",
-            "previous_week": "Repeats the same ACORN value from seven days earlier to test weekly repetition.",
-            "seasonal_mean": "Uses the historical mean for the same ACORN and calendar slot or day.",
-            "ridge": "Regularized linear regression on the engineered weather, calendar, holiday, lag, and rolling features.",
-            "xgboost": "Pooled gradient-boosted tree model trained across the three ACORN segments on the engineered feature table.",
-            "xgboost_by_acorn": "Three isolated XGBoost models, one per ACORN segment, trained only on that segment's history.",
-            "catboost": "Gradient-boosted tree model with strong categorical-feature handling, trained on the same tabular features.",
-            "lightgbm": "Fast gradient-boosted tree model; this is the selected half-hourly model in the current benchmark.",
-            "stack_regressor": "Sklearn stacking ensemble that blends Ridge, XGBoost, and LightGBM with a Ridge meta-model.",
-            "autogluon": "Mid-effort AutoGluon Tabular AutoML run on the engineered feature table; selected for the daily forecast.",
-            "autogluon_best": "High-effort AutoGluon Tabular calibration with more extensive ensembling and stacking.",
-            "autogluon_timeseries": "AutoGluon TimeSeries run using target history plus known future calendar, holiday, and weather covariates.",
-            "autogluon_timeseries_best": "High-effort AutoGluon TimeSeries calibration. It improved over the mid-effort time-series run but was not selected.",
+            "previous_day": {
+                "summary": "Persistence baseline (1-day lag)",
+                "detail": "Repeats the same ACORN consumption value from exactly 24 hours earlier. This is the primary benchmark for short-term persistence."
+            },
+            "previous_week": {
+                "summary": "Seasonal baseline (7-day lag)",
+                "detail": "Repeats the consumption value from exactly 7 days earlier to capture weekly cyclical patterns."
+            },
+            "seasonal_mean": {
+                "summary": "Historical average baseline",
+                "detail": "Calculates the mean consumption for each specific ACORN and calendar time-of-day/day-of-week slot."
+            },
+            "ridge": {
+                "summary": "Regularized linear regression",
+                "detail": "L2-regularized linear model trained on weather covariates, calendar indicators, holiday flags, and historical lags."
+            },
+            "xgboost": {
+                "summary": "Pooled gradient-boosted trees",
+                "detail": "A single XGBoost regressor trained across all three ACORN segments on the comprehensive feature table."
+            },
+            "xgboost_by_acorn": {
+                "summary": "Segment-specific gradient-boosted trees",
+                "detail": "Three isolated XGBoost models trained independently on individual ACORN segment histories."
+            },
+            "catboost": {
+                "summary": "Categorical-optimized gradient boosting",
+                "detail": "A gradient-boosted tree model optimized for handling categorical variables and robust tabular performance."
+            },
+            "lightgbm": {
+                "summary": "Lightweight gradient boosting",
+                "detail": "Highly efficient histogram-based gradient boosted trees; currently selected as the best short-term model."
+            },
+            "stack_regressor": {
+                "summary": "Stacked ensemble regressor",
+                "detail": "An ensemble that blends Ridge, XGBoost, and LightGBM predictions using a secondary Ridge meta-regressor."
+            },
+            "autogluon": {
+                "summary": "AutoGluon Tabular (Medium Preset)",
+                "detail": "AutoML tabular predictor with bagging and stacking; currently selected as the best daily forecast model."
+            },
+            "autogluon_best": {
+                "summary": "AutoGluon Tabular (High Preset)",
+                "detail": "High-effort AutoGluon Tabular calibration with extensive ensembling, ensembled stacks, and longer time limits."
+            },
+            "autogluon_timeseries": {
+                "summary": "AutoGluon TimeSeries (Medium Preset)",
+                "detail": "Deep learning and statistical time-series forecasting model utilizing target history and future known covariates."
+            },
+            "autogluon_timeseries_best": {
+                "summary": "AutoGluon TimeSeries (High Preset)",
+                "detail": "High-effort AutoGluon TimeSeries calibration with deep stacks. Improved over the medium preset but not selected."
+            },
         }
 
         available_models = [str(model) for model in metrics["model"].dropna().unique().tolist()]
@@ -377,19 +416,50 @@ class OverviewTab(BaseTab):
         rows = []
         for model in ordered_models:
             display_name = StyleManager.MODEL_MAP.get(model, model)
-            description = descriptions.get(model, "Model included in the saved validation metrics for comparison.")
+            desc = descriptions.get(model, {
+                "summary": "Custom/Trained Model",
+                "detail": "Model included in the saved validation metrics for comparison."
+            })
+            
+            # Match colors with frequency/class: baseline (#c85a64), half-hourly (#4da4a9), daily/tabular/timeseries (#d49c5e)
+            if model in {"previous_day", "previous_week", "seasonal_mean"}:
+                key_color = "#c85a64"
+                model_class = "Baseline Model"
+            elif "timeseries" in model:
+                key_color = "#d49c5e"
+                model_class = "TimeSeries Model"
+            elif model in {"lightgbm", "xgboost_by_acorn"}:
+                key_color = "#4da4a9"
+                model_class = "Half-Hourly Model"
+            else:
+                key_color = "#d49c5e"
+                model_class = "Tabular Model"
+
             rows.append(
                 "<tr>"
-                f'<td style="vertical-align: top;"><div style="font-weight: 600; color: var(--theme-text);">{escape(display_name)}</div>'
-                f'<div style="font-size: 0.78rem; color: var(--kpi-sub); margin-top: 2px;"><code>{escape(model)}</code></div></td>'
-                f'<td style="vertical-align: top; color: var(--theme-text);">{escape(description)}</td>'
+                f'<td style="vertical-align: top; padding: 12px 16px; width: 30%;">'
+                f'<div style="font-weight: 600; font-size: 0.95rem; color: var(--theme-text);">{escape(display_name)}</div>'
+                f'<div style="display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap;">'
+                f'<code style="font-family: monospace; font-size: 0.76rem; background: var(--kpi-border); color: {key_color}; padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-block;">{escape(model)}</code>'
+                f'<span style="font-size: 0.72rem; color: var(--kpi-sub); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;">{model_class}</span>'
+                f'</div>'
+                f'</td>'
+                f'<td style="vertical-align: top; padding: 12px 16px;">'
+                f'<div style="font-weight: 600; font-size: 0.95rem; color: var(--theme-text);">{escape(desc["summary"])}</div>'
+                f'<div style="font-size: 0.82rem; color: var(--kpi-sub); margin-top: 4px; line-height: 1.45;">{escape(desc["detail"])}</div>'
+                f'</td>'
                 "</tr>"
             )
 
         table_html = (
             '<div class="scrollable-table-wrapper">'
             '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
-            '<thead><tr><th>Model</th><th>Short description</th></tr></thead>'
+            '<thead>'
+            '<tr>'
+            '<th style="width: 30%;">Model</th>'
+            '<th>Short description</th>'
+            '</tr>'
+            '</thead>'
             f'<tbody>{"".join(rows)}</tbody>'
             '</table>'
             '</div>'
