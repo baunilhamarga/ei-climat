@@ -265,7 +265,7 @@ class StyleManager:
         height: 48px;
         font-size: 0.95rem !important;
         font-weight: 500 !important;
-        white-space: pre-wrap;
+        white-space: nowrap !important;
         background-color: var(--tab-bg) !important;
         border-radius: 8px 8px 0px 0px;
         border: 1px solid var(--tab-border) !important;
@@ -703,10 +703,13 @@ class StyleManager:
     .scrollable-table-wrapper {
         max-height: 400px !important;
         overflow-y: auto !important;
+        overflow-x: auto !important;
+        width: 100% !important;
         border: 1px solid var(--kpi-border) !important;
         border-radius: 8px !important;
         margin-top: 1.0rem !important;
         margin-bottom: 1.5rem !important;
+        -webkit-overflow-scrolling: touch !important;
     }
 
     /* Custom premium scrollbar for table container */
@@ -868,6 +871,149 @@ class StyleManager:
         font-size: 1.1rem !important;
         color: #4da4a9 !important;
         line-height: 1 !important;
+    }
+
+    /* Mobile Responsiveness Overhaul */
+    @media (max-width: 768px) {
+        /* General App Spacing & Paddings */
+        .block-container {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+            padding-top: 1.5rem !important;
+            padding-bottom: 1.5rem !important;
+        }
+
+        /* Typography sizing overrides */
+        h1 {
+            font-size: 1.6rem !important;
+            line-height: 1.25 !important;
+            margin-top: 0.75rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        h2 {
+            font-size: 1.35rem !important;
+            margin-top: 1.25rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        h3 {
+            font-size: 1.15rem !important;
+            margin-top: 1.0rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stMarkdownContainer"] li {
+            font-size: 0.95rem !important;
+            line-height: 1.55 !important;
+        }
+
+        /* Float the theme toggle button to top-right on mobile so it's always accessible */
+        .st-key-theme_toggle {
+            position: fixed !important;
+            top: 12px !important;
+            right: 12px !important;
+            z-index: 999999 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .st-key-theme_toggle button {
+            width: 36px !important;
+            height: 36px !important;
+            min-width: 36px !important;
+            max-width: 36px !important;
+            min-height: 36px !important;
+            max-height: 36px !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+            background-color: var(--kpi-bg) !important;
+            border: 1px solid var(--kpi-border) !important;
+        }
+
+        /* Force ACORN filter chips container to wrap and align left on mobile */
+        .st-key-acorn_filter {
+            width: 100% !important;
+            align-items: flex-start !important;
+            text-align: left !important;
+            padding-top: 0.25rem !important;
+        }
+        .st-key-acorn_filter [data-testid="stWidgetLabel"] {
+            margin-left: 0 !important;
+            margin-right: auto !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+        }
+        .st-key-acorn_filter [role="group"] {
+            flex-wrap: wrap !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+            gap: 0.4rem !important;
+        }
+        .st-key-acorn_filter [data-testid="stBaseButton-pillsActive"],
+        .st-key-acorn_filter [data-testid="stBaseButton-pills"] {
+            font-size: 0.82rem !important;
+            height: 34px !important;
+            padding: 0 0.85rem !important;
+        }
+
+        /* Premium KPI Cards Grid Optimization */
+        .kpi-container {
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+            gap: 0.65rem !important;
+            margin-bottom: 1.25rem !important;
+        }
+        .kpi-card {
+            padding: 0.85rem 1.0rem !important;
+            border-radius: 8px !important;
+        }
+        .kpi-label {
+            font-size: 0.72rem !important;
+            margin-bottom: 0.25rem !important;
+        }
+        .kpi-value {
+            font-size: 1.4rem !important;
+        }
+        .kpi-sub {
+            font-size: 0.68rem !important;
+            margin-top: 0.2rem !important;
+        }
+
+        /* Mobile Scrollable Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 4px !important;
+            overflow-x: auto !important;
+            flex-wrap: nowrap !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.8rem !important;
+            padding: 0 10px !important;
+            height: 40px !important;
+            white-space: nowrap !important;
+        }
+
+        /* Mobile Table Scrolling and Column Layouts */
+        .scrollable-table-wrapper table th,
+        .scrollable-table-wrapper table td,
+        [data-testid="stMarkdownContainer"] table th,
+        [data-testid="stMarkdownContainer"] table td {
+            white-space: nowrap !important;
+            padding: 8px 12px !important;
+            font-size: 0.8rem !important;
+        }
+        
+        /* Member layout stacks on smaller viewports */
+        .member-card {
+            padding: 0.6rem 0.85rem !important;
+            gap: 0.6rem !important;
+        }
+        .member-avatar {
+            width: 32px !important;
+            height: 32px !important;
+            font-size: 0.8rem !important;
+        }
+        .member-name {
+            font-size: 0.88rem !important;
+        }
+        .member-detail {
+            font-size: 0.75rem !important;
+        }
     }
     """
 
