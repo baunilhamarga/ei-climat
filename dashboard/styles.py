@@ -873,8 +873,18 @@ class StyleManager:
         line-height: 1 !important;
     }
 
+    .mobile-only-spacer {
+        display: none !important;
+        height: 0 !important;
+    }
+
     /* Mobile Responsiveness Overhaul */
     @media (max-width: 768px) {
+        .mobile-only-spacer {
+            display: block !important;
+            height: 2.2rem !important;
+        }
+
         /* General App Spacing & Paddings */
         .block-container {
             padding-left: 0.75rem !important;
@@ -989,13 +999,53 @@ class StyleManager:
         }
 
         /* Mobile Table Scrolling and Column Layouts */
+        .scrollable-table-wrapper,
+        div[data-testid="stTable"],
+        [data-testid="stMarkdownContainer"] {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+
+        .scrollable-table-wrapper table,
+        div[data-testid="stTable"] table,
+        [data-testid="stMarkdownContainer"] table {
+            min-width: 680px !important; /* Force a minimum width to prevent letter-by-letter compression */
+            table-layout: auto !important;
+            width: auto !important;
+        }
+
         .scrollable-table-wrapper table th,
         .scrollable-table-wrapper table td,
+        div[data-testid="stTable"] table th,
+        div[data-testid="stTable"] table td,
         [data-testid="stMarkdownContainer"] table th,
         [data-testid="stMarkdownContainer"] table td {
-            white-space: nowrap !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
             padding: 8px 12px !important;
-            font-size: 0.8rem !important;
+            font-size: 0.82rem !important;
+            line-height: 1.4 !important;
+        }
+
+        .scrollable-table-wrapper table th,
+        div[data-testid="stTable"] table th,
+        [data-testid="stMarkdownContainer"] table th {
+            white-space: nowrap !important; /* Prevent header text from wrapping */
+        }
+        
+        /* Keep short badges, codes, and spans nowrap so they don't break mid-word */
+        .scrollable-table-wrapper table td span,
+        .scrollable-table-wrapper table td code,
+        .scrollable-table-wrapper table td a,
+        div[data-testid="stTable"] table td span,
+        div[data-testid="stTable"] table td code,
+        div[data-testid="stTable"] table td a,
+        [data-testid="stMarkdownContainer"] table td span,
+        [data-testid="stMarkdownContainer"] table td code,
+        [data-testid="stMarkdownContainer"] table td a {
+            white-space: nowrap !important;
+            display: inline-block !important;
         }
         
         /* Member layout stacks on smaller viewports */
@@ -1168,40 +1218,134 @@ class StyleManager:
     def style_plotly_chart(cls, fig, theme_mode: str = "system") -> None:
         """Applies a premium, theme-consistent style to a Plotly figure."""
         is_light = (theme_mode == "light")
+        is_mobile = st.session_state.get("is_mobile", False)
         
         bg_color = "rgba(0,0,0,0)"
         text_color = "#1f2937" if is_light else "#f3f4f6"
         grid_color = "rgba(0, 0, 0, 0.08)" if is_light else "rgba(255, 255, 255, 0.08)"
         zeroline_color = "rgba(0, 0, 0, 0.15)" if is_light else "rgba(255, 255, 255, 0.15)"
         
-        fig.update_layout(
-            paper_bgcolor=bg_color,
-            plot_bgcolor=bg_color,
-            font=dict(
-                family="'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                color=text_color
-            ),
-            legend=dict(
-                font=dict(color=text_color),
-                title=dict(font=dict(color=text_color)),
-                bgcolor="rgba(0,0,0,0)"
-            ),
-            title=dict(
-                font=dict(color=text_color, size=16)
-            ),
-            coloraxis_colorbar=dict(
-                tickfont=dict(color=text_color),
-                title=dict(font=dict(color=text_color))
-            )
-        )
+        # Check if the chart has any legend items and whether it is a heatmap
+        legend_item_count = sum(1 for trace in fig.data if getattr(trace, "showlegend", None) is not False and getattr(trace, "name", None) is not None)
+        has_legend = (fig.layout.showlegend is not False) and (legend_item_count > 0)
+        is_heatmap = any(getattr(trace, "type", None) == "heatmap" for trace in fig.data)
         
+        # Check if the figure has subplots (facets)
+        has_subplots = any(key.startswith("xaxis") and key != "xaxis" for key in fig.layout)
+        
+        # Configure layout based on device viewport
+        if is_mobile:
+            import math
+            legend_dict = dict(
+                font=dict(color=text_color, size=8.5),
+                title=dict(font=dict(color=text_color, size=8.5)),
+                bgcolor="rgba(0,0,0,0)"
+            )
+            if has_legend:
+                legend_rows = math.ceil(legend_item_count / 2)
+                y_pos = 1.15 if has_subplots else 1.02
+                top_margin = max(100, 75 + legend_rows * 14)
+                if has_subplots:
+                    top_margin += 35  # Additional space to prevent subplot titles overlap
+                
+                legend_dict.update(
+                    orientation="h",
+                    x=0,
+                    xanchor="left",
+                    y=y_pos,
+                    yanchor="bottom"
+                )
+                margin_dict = dict(t=top_margin, b=60, l=50, r=30)
+            else:
+                margin_dict = dict(t=50, b=50, l=50, r=30)
+                
+            fig.update_layout(
+                paper_bgcolor=bg_color,
+                plot_bgcolor=bg_color,
+                font=dict(
+                    family="'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    color=text_color
+                ),
+                legend=legend_dict,
+                title=dict(
+                    font=dict(color=text_color, size=11),
+                    y=0.98,
+                    yanchor="top"
+                ),
+                margin=margin_dict
+            )
+            
+            # Mobile heatmap colorbar styling (thin vertical bar on the right)
+            if is_heatmap:
+                fig.update_layout(
+                    coloraxis_colorbar=dict(
+                        orientation="v",
+                        thickness=8,
+                        len=0.8,
+                        x=1.02,
+                        y=0.5,
+                        yanchor="middle",
+                        tickfont=dict(color=text_color, size=7.5),
+                        title=dict(font=dict(color=text_color, size=8))
+                    ),
+                    margin=dict(t=50, b=85, l=50, r=45)
+                )
+        else:
+            # Desktop configuration
+            legend_dict = dict(
+                font=dict(color=text_color, size=12),
+                title=dict(font=dict(color=text_color, size=12)),
+                bgcolor="rgba(0,0,0,0)"
+            )
+            if has_legend:
+                legend_dict.update(
+                    orientation="v",
+                    x=1.02,
+                    y=1.0,
+                    xanchor="left",
+                    yanchor="top"
+                )
+                margin_dict = dict(t=50, b=50, l=50, r=180)  # Extended right margin for vertical legends
+            else:
+                margin_dict = dict(t=50, b=50, l=50, r=30)
+            
+            fig.update_layout(
+                paper_bgcolor=bg_color,
+                plot_bgcolor=bg_color,
+                font=dict(
+                    family="'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    color=text_color
+                ),
+                legend=legend_dict,
+                title=dict(
+                    font=dict(color=text_color, size=16),
+                    y=0.95,
+                    yanchor="top"
+                ),
+                margin=margin_dict
+            )
+            
+            # Desktop colorbar configuration
+            if is_heatmap:
+                fig.update_layout(
+                    coloraxis_colorbar=dict(
+                        orientation="v",
+                        y=1.0,
+                        yanchor="top",
+                        thickness=30,
+                        len=1.0,
+                        tickfont=dict(color=text_color, size=10),
+                        title=dict(font=dict(color=text_color, size=12))
+                    )
+                )
+
         fig.update_xaxes(
             showgrid=True,
             gridcolor=grid_color,
             zeroline=True,
             zerolinecolor=zeroline_color,
-            tickfont=dict(color=text_color),
-            title_font=dict(color=text_color),
+            tickfont=dict(color=text_color, size=8.5 if is_mobile else 11),
+            title_font=dict(color=text_color, size=9.5 if is_mobile else 12),
             automargin=True,
             title_standoff=15
         )
@@ -1210,8 +1354,8 @@ class StyleManager:
             gridcolor=grid_color,
             zeroline=True,
             zerolinecolor=zeroline_color,
-            tickfont=dict(color=text_color),
-            title_font=dict(color=text_color),
+            tickfont=dict(color=text_color, size=8.5 if is_mobile else 11),
+            title_font=dict(color=text_color, size=9.5 if is_mobile else 12),
             automargin=True,
             title_standoff=15
         )

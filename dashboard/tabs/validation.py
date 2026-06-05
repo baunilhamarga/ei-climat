@@ -214,7 +214,7 @@ class ValidationTab(BaseTab):
         nice_model_name = StyleManager.MODEL_MAP.get(model_col, model_col)
         series_map = {
             "actual": "Actual",
-            model_col: nice_model_name
+            model_col: "Predicted"
         }
         plot_df["series"] = plot_df["series"].map(series_map)
         

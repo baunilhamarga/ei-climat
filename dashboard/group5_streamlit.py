@@ -48,16 +48,25 @@ class ForecastDashboardApp:
         if "acorn_filter" not in st.session_state:
             st.session_state.acorn_filter = acorn_options
 
-        # Initialize or detect theme preference from URL query parameters.
-        # If no theme parameter is present, detect browser theme preferences and reload.
-        if "theme" not in st.query_params:
+        # Initialize or detect theme and viewport preferences from URL query parameters.
+        # If any of them are missing, detect them via JavaScript and reload.
+        if "theme" not in st.query_params or "viewport" not in st.query_params:
             st.html(
                 """
                 <script>
                 const params = new URLSearchParams(window.location.search);
+                let changed = false;
                 if (!params.has('theme')) {
                     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                     params.set('theme', systemTheme);
+                    changed = true;
+                }
+                if (!params.has('viewport')) {
+                    const viewport = window.innerWidth <= 768 ? 'mobile' : 'desktop';
+                    params.set('viewport', viewport);
+                    changed = true;
+                }
+                if (changed) {
                     window.location.search = params.toString();
                 }
                 </script>
@@ -74,6 +83,14 @@ class ForecastDashboardApp:
 
         if "theme_mode" not in st.session_state:
             st.session_state.theme_mode = theme_param
+
+        # Retrieve and enforce viewport parameter
+        viewport_param = st.query_params.get("viewport")
+        if viewport_param not in ["mobile", "desktop"]:
+            viewport_param = "desktop"  # fallback default
+            st.query_params["viewport"] = viewport_param
+
+        st.session_state.is_mobile = (viewport_param == "mobile")
 
         def on_acorn_change():
             if not st.session_state.acorn_filter:
@@ -92,11 +109,30 @@ class ForecastDashboardApp:
         # Inject custom styling & typography (Outfit Google Font, Glassmorphic KPI Cards)
         StyleManager.apply(st.session_state.theme_mode)
         
-        # Inject Javascript to hide the ACORN filter on tabs where it does not affect anything (About and Carbon tabs)
+        # Inject Javascript to handle tab-specific filters and mobile chart layout adjustments
         st.html(
             """
             <script>
             const parentWin = window.parent || window;
+            
+            // 1. Register a debounced resize event listener to trigger a query-param reload on viewport crossover
+            if (!parentWin.hasViewportResizeListener) {
+                parentWin.hasViewportResizeListener = true;
+                let resizeTimeout;
+                parentWin.addEventListener('resize', () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        const currentViewport = parentWin.innerWidth <= 768 ? 'mobile' : 'desktop';
+                        const params = new URLSearchParams(parentWin.location.search);
+                        if (params.get('viewport') !== currentViewport) {
+                            params.set('viewport', currentViewport);
+                            parentWin.location.search = params.toString();
+                        }
+                    }, 250);
+                });
+            }
+
+            // 2. Interval loop to handle tab-specific filter hiding (About and Carbon Footprint tabs)
             if (parentWin.tabIntervalId) {
                 parentWin.clearInterval(parentWin.tabIntervalId);
             }
@@ -104,69 +140,32 @@ class ForecastDashboardApp:
                 try {
                     const doc = parentWin.document;
                     const tabs = Array.from(doc.querySelectorAll('[data-baseweb="tab"], [role="tab"]'));
-                    if (tabs.length === 0) return;
-                    
-                    const activeTab = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
-                    if (!activeTab) return;
-                    
-                    const activeText = activeTab.textContent || "";
-                    const shouldHide = activeText.includes("About") || activeText.includes("Carbon");
-                    
-                    const filterEl = doc.querySelector('.st-key-acorn_filter');
-                    if (!filterEl) return;
-                    
-                    const filterCol = filterEl.closest('div[data-testid="column"]');
-                    if (filterCol) {
-                        if (shouldHide) {
-                            if (filterCol.style.display !== 'none') {
-                                filterCol.style.setProperty('display', 'none', 'important');
-                            }
-                        } else {
-                            if (filterCol.style.display === 'none') {
-                                filterCol.style.setProperty('display', 'flex', 'important');
-                            }
-                        }
-                    } else {
-                        if (shouldHide) {
-                            if (filterEl.style.display !== 'none') {
-                                filterEl.style.setProperty('display', 'none', 'important');
-                            }
-                        } else {
-                            if (filterEl.style.display === 'none') {
-                                filterEl.style.setProperty('display', 'flex', 'important');
+                    if (tabs.length > 0) {
+                        const activeTab = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
+                        if (activeTab) {
+                            const activeText = activeTab.textContent || "";
+                            const shouldHide = activeText.includes("About") || activeText.includes("Carbon");
+                            
+                            const filterEl = doc.querySelector('.st-key-acorn_filter');
+                            if (filterEl) {
+                                const filterCol = filterEl.closest('div[data-testid="column"]');
+                                const target = filterCol || filterEl;
+                                if (shouldHide) {
+                                    if (target.style.display !== 'none') {
+                                        target.style.setProperty('display', 'none', 'important');
+                                    }
+                                } else {
+                                    if (target.style.display === 'none') {
+                                        target.style.setProperty('display', 'flex', 'important');
+                                    }
+                                }
                             }
                         }
                     }
                 } catch (e) {
-                    try {
-                        const tabs = Array.from(document.querySelectorAll('[data-baseweb="tab"], [role="tab"]'));
-                        if (tabs.length === 0) return;
-                        
-                        const activeTab = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
-                        if (!activeTab) return;
-                        
-                        const activeText = activeTab.textContent || "";
-                        const shouldHide = activeText.includes("About") || activeText.includes("Carbon");
-                        
-                        const filterEl = document.querySelector('.st-key-acorn_filter');
-                        if (!filterEl) return;
-                        
-                        const filterCol = filterEl.closest('div[data-testid="column"]');
-                        const target = filterCol || filterEl;
-                        if (shouldHide) {
-                            if (target.style.display !== 'none') {
-                                target.style.setProperty('display', 'none', 'important');
-                            }
-                        } else {
-                            if (target.style.display === 'none') {
-                                target.style.setProperty('display', 'flex', 'important');
-                            }
-                        }
-                    } catch (innerError) {
-                        console.error("Error in tab filter helper: ", innerError);
-                    }
+                    // Fail silently inside interval loop
                 }
-            }, 100);
+            }, 250);
             </script>
             """,
             unsafe_allow_javascript=True,

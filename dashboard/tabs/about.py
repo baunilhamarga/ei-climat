@@ -281,10 +281,10 @@ class AboutTab(BaseTab):
         ]
 
         supervisors_data = [
-            {"name": "Laurent BOZZI", "role": "Data scientist, EDF R&D"},
-            {"name": "Théodore CHERRIERE", "role": "Enseignant-chercheur, CentraleSupélec - GeePs"},
-            {"name": "Jing DAI", "role": "Enseignant-chercheur, CentraleSupélec - GeePs"},
-            {"name": "Dung LÉ", "role": "Enseignant-chercheur, CentraleSupélec - GeePs"},
+            {"name": "Laurent Bozzi", "role": "Data scientist, EDF R&D"},
+            {"name": "Théodore Cherriere", "role": "Enseignant-chercheur, CentraleSupélec - GeePs"},
+            {"name": "Jing Dai", "role": "Enseignant-chercheur, CentraleSupélec - GeePs"},
+            {"name": "Dung Lé", "role": "Enseignant-chercheur, CentraleSupélec - GeePs"},
         ]
 
         def get_initials(name: str) -> str:
@@ -323,8 +323,9 @@ class AboutTab(BaseTab):
 
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown('<p style="font-weight: 600 !important; font-size: 1.05rem !important; margin-bottom: 0.5rem !important;">Student analysis team</p>', unsafe_allow_html=True)
+            st.markdown('<p style="font-weight: 600 !important; font-size: 1.05rem !important; margin-top: 1.25rem !important; margin-bottom: 0.5rem !important;">Student analysis team</p>', unsafe_allow_html=True)
             st.markdown(students_html, unsafe_allow_html=True)
         with col2:
-            st.markdown('<p style="font-weight: 600 !important; font-size: 1.05rem !important; margin-bottom: 0.5rem !important;">Supervision</p>', unsafe_allow_html=True)
+            st.markdown('<div class="mobile-only-spacer"></div>', unsafe_allow_html=True)
+            st.markdown('<p style="font-weight: 600 !important; font-size: 1.05rem !important; margin-top: 1.25rem !important; margin-bottom: 0.5rem !important;">Supervision</p>', unsafe_allow_html=True)
             st.markdown(supervisors_html, unsafe_allow_html=True)
