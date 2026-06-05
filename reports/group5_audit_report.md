@@ -241,10 +241,11 @@ Trainable model metrics by segment:
 AutoGluon and stack-regressor details:
 
 1. The selected daily AutoGluon Tabular predictor is `WeightedEnsemble_L3_FULL`, the full-data refit of the validation-selected level-3 weighted ensemble.
-2. The daily ensemble combines `CatBoost_BAG_L1` at 50.0%, `LightGBMXT_BAG_L1` at 27.3%, `CatBoost_BAG_L2` at 18.2%, and `RandomForestMSE_BAG_L2` at 4.5%.
-3. The daily AutoGluon validation fit took about five minutes, and the final daily refit also took about five minutes under the mid-effort settings.
-4. The stack regressor blends ridge, XGBoost, and LightGBM with a ridge meta-model. It performed competitively on the half-hourly task but did not beat LightGBM or AutoGluon.
-5. AutoGluon TimeSeries was evaluated with rolling final-horizon validation, but it remained weaker than the tabular models in this benchmark.
+2. The daily selected ensemble combines `CatBoost_BAG_L1` at 50.0%, `LightGBMXT_BAG_L1` at 27.3%, `CatBoost_BAG_L2` at 18.2%, and `RandomForestMSE_BAG_L2` at 4.5%.
+3. The saved AutoGluon instances use these final prediction models: half-hourly `autogluon` uses `WeightedEnsemble_L2_FULL`; daily `autogluon` uses `WeightedEnsemble_L3_FULL`; half-hourly and daily `autogluon_best` use `WeightedEnsemble_L4`; mid-effort TimeSeries uses `WeightedEnsemble`; max-effort TimeSeries predicts with the best non-full `WeightedEnsemble` even though AutoGluon also created `_FULL` refits.
+4. Runtime evidence: mid-effort Tabular was about 17 minutes per half-hourly fit and about 7 minutes per daily fit, estimated from saved predictor timestamps. Max-effort Tabular was about 43-45 minutes per fit. TimeSeries logs show about 8m18s/8m16s for half-hourly validation/final mid-effort, 2m21s/2m28s for daily validation/final mid-effort, 1h02m17s + 28s refit and 1h05m07s + 39s refit for half-hourly max-effort, and 27m28s + 3s refit and 29m24s + 3s refit for daily max-effort.
+5. The stack regressor blends ridge, XGBoost, and LightGBM with a ridge meta-model. It performed competitively on the half-hourly task but did not beat LightGBM or AutoGluon.
+6. AutoGluon TimeSeries was evaluated with rolling final-horizon validation, but it remained weaker than the tabular models in this benchmark.
 
 Interpretation for report writing:
 
@@ -333,9 +334,9 @@ Concise report:
 
 The AutoGluon-only refresh was run after the broader model benchmark so that tabular AutoML and time-series AutoML could be retrained without rerunning all non-AutoGluon models. The refresh updates `outputs/group5/metrics/validation_metrics.csv`, the all-model prediction files, and the selected daily model directory.
 
-AutoGluon Tabular now wins the daily chronological validation benchmark with RMSE `0.347658`. The selected daily model is the full-data refit `WeightedEnsemble_L3_FULL`. It should be described as a stacked weighted ensemble, not as a single CatBoost or XGBoost model.
+AutoGluon Tabular now wins the daily chronological validation benchmark with RMSE `0.347658`. The selected daily model is the full-data refit `WeightedEnsemble_L3_FULL`. It should be described as a stacked weighted ensemble, not as a single CatBoost or XGBoost model. The saved final daily Tabular fit took about 7m05s under the mid-effort settings; the max-effort daily Tabular run took about 45m22s and selected `WeightedEnsemble_L4`, but it did not beat the mid-effort daily Tabular validation score.
 
-AutoGluon TimeSeries is still included in the comparison, but it is not selected. Its half-hourly validation uses rolling 96-step chunks to match the 48-hour assignment horizon.
+AutoGluon TimeSeries is still included in the comparison, but it is not selected. Its half-hourly validation uses rolling 96-step chunks to match the 48-hour assignment horizon. The max-effort TimeSeries runs did improve over the mid-effort TimeSeries scores, but final prediction uses the non-full `WeightedEnsemble` path because the `_FULL` ensemble referenced an unavailable Chronos fine-tuned checkpoint during prediction.
 
 ## Limits and risks to mention
 

@@ -55,7 +55,22 @@ The compared models are:
 
 The stack regressor is a second ensemble benchmark built inside sklearn. It combines ridge, XGBoost, and LightGBM base learners, then fits a ridge meta-model on their predictions. This gives a useful check that a simple blended model can compete with the individual models, but it did not improve the final validation score in either horizon.
 
-The selected daily AutoGluon Tabular model is `WeightedEnsemble_L3_FULL`. It is the refit version of AutoGluon's level-3 weighted ensemble, trained after the validation comparison on all available labeled daily history. In the saved daily predictor, the ensemble is mainly CatBoost and LightGBM-based: `CatBoost_BAG_L1` has 50.0% weight, `LightGBMXT_BAG_L1` 27.3%, `CatBoost_BAG_L2` 18.2%, and `RandomForestMSE_BAG_L2` 4.5%. The separate daily validation fit took about five minutes, and the final daily refit also took about five minutes under the mid-effort AutoGluon settings.
+The selected daily AutoGluon Tabular model is `WeightedEnsemble_L3_FULL`. It is the refit version of AutoGluon's level-3 weighted ensemble, trained after the validation comparison on all available labeled daily history. In the saved daily predictor, the ensemble is mainly CatBoost and LightGBM-based: `CatBoost_BAG_L1` has 50.0% weight, `LightGBMXT_BAG_L1` 27.3%, `CatBoost_BAG_L2` 18.2%, and `RandomForestMSE_BAG_L2` 4.5%.
+
+Saved AutoGluon prediction models and training-time evidence:
+
+| horizon | dashboard model | final prediction model | validation fit | final fit | validation RMSE |
+| --- | --- | --- | --- | --- | --- |
+| half-hourly | `autogluon` | `WeightedEnsemble_L2_FULL` | 16m57s estimated | 16m47s estimated | 0.007426 |
+| daily | `autogluon` | `WeightedEnsemble_L3_FULL` | 7m08s estimated | 7m05s estimated | 0.347658 |
+| half-hourly | `autogluon_best` | `WeightedEnsemble_L4` | 42m38s estimated | 43m48s estimated | 0.007410 |
+| daily | `autogluon_best` | `WeightedEnsemble_L4` | 45m22s estimated | 45m22s logged | 0.364007 |
+| half-hourly | `autogluon_timeseries` | `WeightedEnsemble` | 8m18s logged | 8m16s logged | 0.016361 |
+| daily | `autogluon_timeseries` | `WeightedEnsemble` | 2m21s logged | 2m28s logged | 0.491688 |
+| half-hourly | `autogluon_timeseries_best` | `WeightedEnsemble` | 1h02m17s + 28s refit logged | 1h05m07s + 39s refit logged | 0.015508 |
+| daily | `autogluon_timeseries_best` | `WeightedEnsemble` | 27m28s + 3s refit logged | 29m24s + 3s refit logged | 0.412653 |
+
+The Tabular runtimes marked as estimates were reconstructed from saved predictor timestamps because the plain AutoGluon training logs were not preserved for every tabular run. The TimeSeries runtimes come from the saved AutoGluon predictor logs. The max-effort TimeSeries predictors created `_FULL` refits, but final predictions use the best non-full `WeightedEnsemble` because the default `_FULL` ensemble path referenced an unavailable Chronos fine-tuned checkpoint during prediction.
 
 Overall validation RMSE:
 
