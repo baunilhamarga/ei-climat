@@ -885,6 +885,14 @@ class StyleManager:
             height: 2.2rem !important;
         }
 
+        /* Hide Plotly chart modebar (zoom, pan, etc.) to prevent obstructing titles */
+        .js-plotly-plot .modebar,
+        .js-plotly-plot .modebar-container,
+        .modebar-container,
+        .modebar {
+            display: none !important;
+        }
+
         /* General App Spacing & Paddings */
         .block-container {
             padding-left: 0.75rem !important;
