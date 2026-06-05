@@ -1,3 +1,4 @@
+from html import escape
 from pathlib import Path
 # pyrefly: ignore [missing-import]
 import pandas as pd
@@ -328,3 +329,69 @@ class OverviewTab(BaseTab):
         fig_rmse_daily.update_xaxes(categoryorder="total descending")
         StyleManager.style_plotly_chart(fig_rmse_daily, st.session_state.theme_mode)
         rmse_cols[1].plotly_chart(fig_rmse_daily, width='stretch', theme=None)
+
+        self._render_model_reference(metrics)
+
+    def _render_model_reference(self, metrics: pd.DataFrame) -> None:
+        st.subheader("Model Reference")
+        st.markdown(
+            "This table is a quick glossary for the benchmark models shown across the dashboard. "
+            "It includes the simple baselines as well as the trained models used in validation and final forecasting."
+        )
+
+        model_order = [
+            "previous_day",
+            "previous_week",
+            "seasonal_mean",
+            "ridge",
+            "xgboost",
+            "xgboost_by_acorn",
+            "catboost",
+            "lightgbm",
+            "stack_regressor",
+            "autogluon",
+            "autogluon_best",
+            "autogluon_timeseries",
+            "autogluon_timeseries_best",
+        ]
+        descriptions = {
+            "previous_day": "Repeats the same ACORN value from one day earlier. This is the main persistence baseline.",
+            "previous_week": "Repeats the same ACORN value from seven days earlier to test weekly repetition.",
+            "seasonal_mean": "Uses the historical mean for the same ACORN and calendar slot or day.",
+            "ridge": "Regularized linear regression on the engineered weather, calendar, holiday, lag, and rolling features.",
+            "xgboost": "Pooled gradient-boosted tree model trained across the three ACORN segments on the engineered feature table.",
+            "xgboost_by_acorn": "Three isolated XGBoost models, one per ACORN segment, trained only on that segment's history.",
+            "catboost": "Gradient-boosted tree model with strong categorical-feature handling, trained on the same tabular features.",
+            "lightgbm": "Fast gradient-boosted tree model; this is the selected half-hourly model in the current benchmark.",
+            "stack_regressor": "Sklearn stacking ensemble that blends Ridge, XGBoost, and LightGBM with a Ridge meta-model.",
+            "autogluon": "Mid-effort AutoGluon Tabular AutoML run on the engineered feature table; selected for the daily forecast.",
+            "autogluon_best": "High-effort AutoGluon Tabular calibration with more extensive ensembling and stacking.",
+            "autogluon_timeseries": "AutoGluon TimeSeries run using target history plus known future calendar, holiday, and weather covariates.",
+            "autogluon_timeseries_best": "High-effort AutoGluon TimeSeries calibration. It improved over the mid-effort time-series run but was not selected.",
+        }
+
+        available_models = [str(model) for model in metrics["model"].dropna().unique().tolist()]
+        ordered_models = [model for model in model_order if model in available_models]
+        ordered_models.extend(sorted(model for model in available_models if model not in ordered_models))
+
+        rows = []
+        for model in ordered_models:
+            display_name = StyleManager.MODEL_MAP.get(model, model)
+            description = descriptions.get(model, "Model included in the saved validation metrics for comparison.")
+            rows.append(
+                "<tr>"
+                f'<td style="vertical-align: top;"><div style="font-weight: 600; color: var(--theme-text);">{escape(display_name)}</div>'
+                f'<div style="font-size: 0.78rem; color: var(--kpi-sub); margin-top: 2px;"><code>{escape(model)}</code></div></td>'
+                f'<td style="vertical-align: top; color: var(--theme-text);">{escape(description)}</td>'
+                "</tr>"
+            )
+
+        table_html = (
+            '<div class="scrollable-table-wrapper">'
+            '<table class="scope-table" style="width:100%; border-collapse:collapse;">'
+            '<thead><tr><th>Model</th><th>Short description</th></tr></thead>'
+            f'<tbody>{"".join(rows)}</tbody>'
+            '</table>'
+            '</div>'
+        )
+        st.markdown(table_html, unsafe_allow_html=True)
